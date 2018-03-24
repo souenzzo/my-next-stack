@@ -3,6 +3,16 @@
                  [com.walmartlabs/lacinia "0.25.0"]
                  [com.walmartlabs/lacinia-pedestal "0.7.0"]
                  [ch.qos.logback/logback-classic "1.2.3"]]
+  :source-paths ["src"]
   :main server.core
-  :profiles {:dev {:source-paths ["src" "dev"]
-                   :main         user}})
+  :profiles {:client {:source-paths ["src"]
+                      :jvm-opts     ["--add-modules" "java.xml.bind"]
+                      :dependencies [[org.clojure/clojurescript "1.10.217"]
+                                     [re-frame/re-frame "0.10.5"]
+                                     [reagent/reagent "0.8.0-alpha2"]]}
+             :dev    {:source-paths ["src" "dev"]
+                      :dependencies [[figwheel-sidecar/figwheel-sidecar "0.5.15"]
+                                     [com.cemerick/piggieback "0.2.2"]
+                                     [org.clojure/tools.nrepl "0.2.13"]]
+                      :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+                      :main         user}})

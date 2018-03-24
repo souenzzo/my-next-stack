@@ -3,3 +3,5 @@
 target/
 .nrepl-port
 logs/
+resources/public/js
+*.log
