@@ -1,10 +1,11 @@
 (ns client.events
   (:require [re-frame.core :as rf]))
 
-(rf/reg-event-db
+(rf/reg-event-fx
   :init
   (fn [_ _]
-    {:text "Olá mundo!!"}))
+    {:client.fetch/graphql "{ hello }"
+     :db                   {:text "Olá mundo!!"}}))
 
 
 (rf/reg-event-db

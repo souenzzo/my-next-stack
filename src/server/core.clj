@@ -15,9 +15,17 @@
       (parser.schema/parse-schema {:resolvers resolvers})
       schema/compile))
 
+
 (def service
   (-> graphql-schema
       (lacinia/service-map {:graphiql true})
+      (assoc
+        ::http/cred true
+        ::http/secure-headers {:content-security-policy-settings ""}
+        ::http/allowed-origins {:creds           true
+                                :allowed-origins (constantly true)})
+      http/default-interceptors
+      http/dev-interceptors
       http/create-server))
 
 (defonce http-service (atom nil))
