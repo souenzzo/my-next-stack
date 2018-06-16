@@ -27,6 +27,4 @@
 
 (defn restart
   []
-  (when-let [srv @server/http-service]
-    (http/stop srv))
   (server/-main))
