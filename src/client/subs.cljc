@@ -5,3 +5,8 @@
   :text
   (fn [db _]
     (:text db)))
+
+(rf/reg-sub
+  :n
+  (fn [db _]
+    (:app/n db)))

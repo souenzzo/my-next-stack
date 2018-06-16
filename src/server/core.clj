@@ -39,30 +39,28 @@
 (def conn (atom {}))
 
 (defn api
-  [{:keys [params]}]
-  {:body   (parser {:conn conn} params)
+  [{:keys [body]}]
+  {:body   (parser {:conn conn} body)
    :status 200})
 
 
 (def read-writer
   {:name  ::read-writer
    :leave (fn [{{{:strs [accept]
-                  :or   {accept "application/edn"}} :headers
-                 :keys                              [body]} :request
-                :as                                         ctx}]
+                  :or   {accept "application/edn"}} :headers} :request
+                :as                                           ctx}]
             (let [writer (cond (string/starts-with? accept "application/transit+json") (fn [data]
                                                                                          (fn [out]
                                                                                            (transit/write (transit/writer out :json) data)))
                                :else pr-str)]
-              (assoc-in ctx [:request :params] (writer body))))
+              (update-in ctx [:response :body] writer)))
    :enter (fn [{{{:strs [content-type]
-                  :or   {content-type "application/edn"}} :headers
-                 :keys                                    [body]} :request
-                :as                                               ctx}]
+                  :or   {content-type "application/edn"}} :headers} :request
+                :as                                                 ctx}]
             (let [reader (cond (string/starts-with? content-type "application/transit+json") (fn [in]
                                                                                                (transit/read (transit/reader in :json)))
                                :else (comp edn/read-string slurp))]
-              (assoc-in ctx [:request :params] (reader body))))})
+              (update-in ctx [:request :body] reader)))})
 (def routes
   `#{["/api" :post [read-writer api]]})
 

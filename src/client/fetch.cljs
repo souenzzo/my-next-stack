@@ -1,18 +1,28 @@
 (ns client.fetch
-  (:require [re-frame.core :as rf]))
+  (:require [re-frame.core :as rf]
+            [cognitect.transit :as transit]))
 
-(def url "//localhost:8888/graphql")
+(def writer (transit/writer :json))
+(def reader (transit/reader :json))
 
-(def headers (new js/Headers #js {:Content-Type "application/json"}))
+(def url "//localhost:8080/api")
+
+(def headers (new js/Headers #js {:Accept       "application/transit+json"
+                                  :Content-Type "application/transit+json"}))
+
+
+(defn fetch
+  [query callback]
+  (let [body (transit/write writer query)
+        fetch (.fetch js/window url #js {:method "POST" :headers headers :body body})]
+    (.then (.then fetch (fn [response] (.text response)))
+           (fn [text] (callback (transit/read reader text))))))
 
 (rf/reg-fx
-  ::graphql
+  ::send
   (fn [query]
-    (.log js/console "ok!!")
-    (let [body (.stringify js/JSON #js {:query query})
-          fetch (.fetch js/window url #js {:method "POST" :headers headers :body body})]
-      (.then (.then fetch (fn [text] (.json text)))
-             (fn [json]
-               (let [data (js->clj json :keywordize-keys true)]
-                 (.log js/console json)
-                 (prn data)))))))
+    (fetch query #(rf/dispatch [::recive %]))))
+
+(rf/reg-event-db
+  ::recive
+  (fn [db [_ data]] (merge db data)))
