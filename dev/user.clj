@@ -1,7 +1,6 @@
 (ns user
   (:require [server.core :as server]
             [figwheel-sidecar.repl-api :as f]
-            [io.pedestal.http :as http]
             [clojure.java.shell :as sh]))
 
 (def dev-build
@@ -28,10 +27,10 @@
 
 (defn start
   []
-  (sh/sh "yarn" "install")
-  (sh/sh "yarn" "webpack")
-  (f/start-figwheel!
-    {:builds [dev-build]}))
+  (time
+    (do (sh/sh "yarn" "install")
+        (sh/sh "yarn" "webpack")
+        (f/start-figwheel! {:builds [dev-build]}))))
 
 (defn cljs-repl
   []

@@ -8,11 +8,11 @@
   :source-paths ["src"]
   :main server.core
   :profiles {:client {:source-paths  ["src"]
-                      :clean-targets ^{:protect false} ["resources/public/js"]
+                      :clean-targets ^{:protect false} ["resources/public/js" "dist/"]
                       :dependencies  [[org.clojure/clojurescript "1.10.312"]
                                       [re-frame/re-frame "0.10.5"]
                                       [reagent/reagent "0.8.1"]]
-                      :exclusions [cljsjs/react cljsjs/react-dom]}
+                      :exclusions    [cljsjs/react cljsjs/react-dom]}
              :dev    {:source-paths ["src" "dev"]
                       :dependencies [[figwheel-sidecar/figwheel-sidecar "0.5.16"]
                                      [com.cemerick/piggieback "0.2.2"]

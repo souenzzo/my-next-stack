@@ -8,6 +8,10 @@
      :db                {:text "Olá mundo!!"}}))
 
 
+(rf/reg-event-db
+  :todo/text
+  (fn [db [_ v]] (assoc db :todo/text v)))
+
 (rf/reg-event-fx
   :transact
   (fn [{:keys [db]} [_ query]]

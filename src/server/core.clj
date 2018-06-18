@@ -29,6 +29,40 @@
                {:app/n (:n @conn 0)}))
 
 
+(defresolver `app-todos
+             {::pc/output [{:app/todos [:todo/id
+                                        :todo/done?
+                                        :todo/text]}]}
+             (fn [{:keys [conn]} _]
+               {:app/todos (:app/todos @conn [])}))
+
+(defmutation `todo/add-todo
+             {::pc/args [:todo/text]}
+             (fn [{:keys [conn]} {:keys [todo/text]}]
+               (swap! conn (fn [{:keys [app/todos app/next-id]
+                                 :or   {todos   []
+                                        next-id 0}
+                                 :as   st}]
+                             (assoc st
+                               :app/todos (conj todos {:todo/id   next-id
+                                                       :todo/text text})
+                               :app/next-id (inc next-id))))))
+
+(defmutation `todo/check
+             {::pc/args [:todo/id :todo/done?]}
+             (fn [{:keys [conn]} {:keys [todo/id todo/done?]}]
+               (swap! conn (fn [{:keys [app/todos]
+                                 :or   {todos []}
+                                 :as   st}]
+                             (assoc st
+                               :app/todos (for [todo todos]
+                                            (if (= (:todo/id todo) id)
+                                              (assoc todo :todo/done? done?)
+                                              todo)))))))
+
+
+
+
 (def parser
   (p/parser {::p/env {::p/reader             [p/map-reader pc/all-readers]
                       ::pc/mutate-dispatch   mutation-fn
