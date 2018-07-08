@@ -13,7 +13,7 @@
 (def ui-todo-item (prim/factory TodoItem {:keyfn :db/id}))
 
 (defsc TodoApp
-  [this {:keys [app/todos todo/text] :as x}]
+  [this {:keys [app/todos todo.new/text]}]
   {:query [{:app/todos (prim/get-query ui-todo-item)}
            :todo.new/text]}
   (dom/div #js {}
@@ -33,6 +33,7 @@
                 :todo/text  "[clinet]Keep trying"}]})
 
 (defsc Root
+  ;[this _]
   [this {:keys [todo/data]}]
   {:query [{:todo/data (prim/get-query ui-todo-app)}]}
   (prn data)
