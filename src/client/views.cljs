@@ -5,10 +5,9 @@
 
 
 (defsc TodoItem
-  [this {:keys [todo/text todo/done? db/id]}]
+  [this {:keys [todo/text todo/done?]}]
   {:query [:todo/text :todo/done? :db/id]}
-  (a/list-item #js {:key    id
-                    :dense  true
+  (a/list-item #js {:dense  true
                     :button true}
                (a/checkbox #js {:checked done?})
                (a/list-item-text #js {:primary text})))
@@ -17,7 +16,8 @@
 
 (defsc TodoApp
   [this {:keys [app/todos todo.new/text]}]
-  {:query [{:app/todos (prim/get-query ui-todo-item)}
+  {:query [:db/id
+           {:app/todos (prim/get-query ui-todo-item)}
            :todo.new/text]}
   (dom/div #js {}
            (a/input #js {:value text})
@@ -28,17 +28,18 @@
 (def ui-todo-app (prim/factory TodoApp {:keyfn :db/id}))
 
 (def data
-  {:todo/text "WIP"
-   :app/todos [{:db/id      1
-                :todo/text  "[clinet]Do fulcro network!"
-                :todo/done? false}
-               {:db/id      2
-                :todo/done? true
-                :todo/text  "[clinet]Keep trying"}]})
+  {:db/id         0
+   :todo.new/text "WIP"
+   :app/todos     [{:db/id      1
+                    :todo/text  "[clinet]Do fulcro network!"
+                    :todo/done? false}
+                   {:db/id      2
+                    :todo/done? true
+                    :todo/text  "[clinet]Keep trying"}]})
 
 (defsc Root
-  ;[this _]
-  [this {:keys [todo/data]}]
+  [this _]
+  ;[this {:keys [todo/data]}]
   {:query [{:todo/data (prim/get-query ui-todo-app)}]}
   (prn data)
   (dom/div #js {}
