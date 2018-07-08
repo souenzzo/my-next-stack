@@ -14,10 +14,18 @@
                    :infer-externs   true
                    :npm-deps        false
                    :foreign-libs    [{:file           "dist/index_bundle.js"
-                                      :provides       ["react" "react-dom" "material-ui"]
-                                      :global-exports {react       React
-                                                       material-ui MaterialUI
-                                                       react-dom   ReactDOM}}]
+                                      :provides       ["react"
+                                                       "react-dom"
+                                                       "material-ui"
+                                                       "material-styles"
+                                                       "cljsjs.react"
+                                                       "cljsjs.react.dom"]
+                                      :global-exports {react            React
+                                                       material-ui      MaterialUI
+                                                       material-styles  MaterialStyles
+                                                       cljsjs.react.dom ReactDOM
+                                                       cljsjs.react     React
+                                                       react-dom        ReactDOM}}]
 
 
                    :closure-defines {goog.asserts.ENABLE_ASSERTS true

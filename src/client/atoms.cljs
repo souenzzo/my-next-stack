@@ -1,18 +1,22 @@
 (ns client.atoms
-  (:require [material-ui :as m]
-            [reagent.core :as r]))
+  (:require [react :as r]
+            [material-ui :as m]))
 
-(def button (r/adapt-react-class m/Button))
+(defn factory-apply
+  [class]
+  (fn [props & children]
+    (apply r/createElement class props children)))
 
-(def checkbox (r/adapt-react-class m/Checkbox))
+(def button (factory-apply m/Button))
 
-(def text-field (r/adapt-react-class m/TextField))
+(def checkbox (factory-apply m/Checkbox))
 
-(def table (r/adapt-react-class m/Table))
+(def text-field (factory-apply m/TextField))
 
-(def table-head (r/adapt-react-class m/TableHead))
-(def table-body (r/adapt-react-class m/TableBody))
-(def table-row (r/adapt-react-class m/TableRow))
+(def table (factory-apply m/Table))
 
-(def table-cell (r/adapt-react-class m/TableCell))
+(def table-head (factory-apply m/TableHead))
+(def table-body (factory-apply m/TableBody))
+(def table-row (factory-apply m/TableRow))
 
+(def table-cell (factory-apply m/TableCell))

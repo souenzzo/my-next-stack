@@ -1,42 +1,38 @@
 (ns client.views
-  (:require [re-frame.core :as rf]
-            [client.atoms :as a]
-            [reagent.core :as reagent]))
+  (:require [client.atoms :as a]
+            [fulcro.client.primitives :as prim :refer [defsc]]
+            [fulcro.client.dom :as dom]))
 
 
-(defn todo-app
-  [{:keys [todo/text todos]}]
-  (let []
-    [:div
-     [a/text-field {:value     text
-                    :on-change #(rf/dispatch-sync [:todo/text (-> % .-target .-value)])}]
-     [a/button {:on-click #(rf/dispatch [:transact `[(todo/add-todo {:todo/text ~text})
-                                                     {:app/todos [:todo/text
-                                                                  :todo/done?
-                                                                  :todo/id]}]])} "+"]
-     [:hr]
-     [a/table
-      [a/table-head
-       [a/table-row
-        [a/table-cell "_"]
-        [a/table-cell "_"]
-        [a/table-cell "_"]]]
-      [a/table-body
-       (for [{:keys [todo/text todo/id todo/done?]} todos]
-         [a/table-row
-          {:key id}
-          [a/table-cell [a/checkbox {:checked   done?
-                                     :on-change (fn [e checked?]
-                                                  (rf/dispatch [:transact `[(todo/check ~{:todo/id    id
-                                                                                          :todo/done? checked?})
-                                                                            {:app/todos [:todo/text
-                                                                                         :todo/done?
-                                                                                         :todo/id]}]]))}]]
-          [a/table-cell text]
-          [a/table-cell [a/checkbox]]])]]]))
+(defsc TodoItem
+  [this {:keys [todo/text todo/done? db/id]}]
+  {:query [:todo/text :todo/done? :db/id]}
+  (dom/div #js {:key id}
+           (str [id done? text])))
 
-(defn hello
-  []
-  (let [text @(rf/subscribe [:todo/text])
-        todos @(rf/subscribe [:app/todos])]
-    [todo-app {:todo/text text :todos todos}]))
+(def ui-todo-item (prim/factory TodoItem {:keyfn :db/id}))
+
+(defsc TodoApp
+  [this {:keys [app/todos todo/text] :as x}]
+  {:query [{:app/todos (prim/get-query ui-todo-item)}
+           :todo/text]}
+  (do (prn [:xx x])
+      (dom/div #js {}
+               (dom/input #js {:value text})
+               (dom/hr)
+               (map ui-todo-item todos))))
+
+(def ui-todo-app (prim/factory TodoApp))
+
+(def data
+  {:todo/text "WIP"
+   :app/todos [{:db/id      1
+                :todo/done? false
+                :todo/text  "aaa"}]})
+
+(defsc Root
+  [this {:keys [#_todo/data]}]
+  {:query [{:todo/data (prim/get-query ui-todo-app)}]}
+  (dom/div #js {}
+           "My next stack"
+           (ui-todo-item data)))
