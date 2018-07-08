@@ -7,8 +7,11 @@
 (defsc TodoItem
   [this {:keys [todo/text todo/done? db/id]}]
   {:query [:todo/text :todo/done? :db/id]}
-  (dom/div #js {:key id}
-           (str [id done? text])))
+  (a/list-item #js {:key    id
+                    :dense  true
+                    :button true}
+               (a/checkbox #js {:checked done?})
+               (a/list-item-text #js {:primary text})))
 
 (def ui-todo-item (prim/factory TodoItem {:keyfn :db/id}))
 
@@ -17,9 +20,10 @@
   {:query [{:app/todos (prim/get-query ui-todo-item)}
            :todo.new/text]}
   (dom/div #js {}
-           (dom/input #js {:value text})
+           (a/input #js {:value text})
+           (a/button #js {} "+")
            (dom/hr)
-           (map ui-todo-item todos)))
+           (a/list #js {} (map ui-todo-item todos))))
 
 (def ui-todo-app (prim/factory TodoApp {:keyfn :db/id}))
 

@@ -1,6 +1,7 @@
 (ns client.atoms
+  (:refer-clojure :exclude [list])
   (:require [react :as r]
-            [material-ui :as m]))
+            [material-ui.core :as m]))
 
 (defn factory-apply
   [class]
@@ -8,6 +9,16 @@
     (apply r/createElement class props children)))
 
 (def button (factory-apply m/Button))
+
+(def input (factory-apply m/Input))
+
+(def list-item (factory-apply m/ListItem))
+
+(def list-item-text (factory-apply m/ListItemText))
+
+(def list (factory-apply m/List))
+
+(def divider (factory-apply m/Divider))
 
 (def checkbox (factory-apply m/Checkbox))
 
