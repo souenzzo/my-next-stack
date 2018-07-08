@@ -15,24 +15,27 @@
 (defsc TodoApp
   [this {:keys [app/todos todo/text] :as x}]
   {:query [{:app/todos (prim/get-query ui-todo-item)}
-           :todo/text]}
-  (do (prn [:xx x])
-      (dom/div #js {}
-               (dom/input #js {:value text})
-               (dom/hr)
-               (map ui-todo-item todos))))
+           :todo.new/text]}
+  (dom/div #js {}
+           (dom/input #js {:value text})
+           (dom/hr)
+           (map ui-todo-item todos)))
 
-(def ui-todo-app (prim/factory TodoApp))
+(def ui-todo-app (prim/factory TodoApp {:keyfn :db/id}))
 
 (def data
   {:todo/text "WIP"
    :app/todos [{:db/id      1
-                :todo/done? false
-                :todo/text  "aaa"}]})
+                :todo/text  "[clinet]Do fulcro network!"
+                :todo/done? false}
+               {:db/id      2
+                :todo/done? true
+                :todo/text  "[clinet]Keep trying"}]})
 
 (defsc Root
-  [this {:keys [#_todo/data]}]
+  [this {:keys [todo/data]}]
   {:query [{:todo/data (prim/get-query ui-todo-app)}]}
+  (prn data)
   (dom/div #js {}
            "My next stack"
-           (ui-todo-item data)))
+           (ui-todo-app data)))

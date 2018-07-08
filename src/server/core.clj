@@ -28,13 +28,18 @@
 
 
 (defresolver `app-todos
-             {::pc/output [{:app/todos [:db/id
+             {::pc/output [:todo.new/text
+                           {:app/todos [:db/id
                                         :todo/done?
                                         :todo/text]}]}
              (fn [_ _]
-               {:app/todos [{:db/id      1
-                             :todo/text  "Do fulcro network!"
-                             :todo/done? false}]}))
+               {:todo.new/text "hello"
+                :app/todos     [{:db/id      1
+                                 :todo/text  "Do fulcro network!"
+                                 :todo/done? false}
+                                {:db/id      2
+                                 :todo/done? true
+                                 :todo/text  "Keep trying"}]}))
 
 (def parser
   (p/parser {::p/env {::p/reader             [p/map-reader pc/all-readers]
