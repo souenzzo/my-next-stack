@@ -3,4 +3,5 @@
 
 (defn on-jsload
   []
-  (client/main "app"))
+  (let [target (.getElementById js/document "app")]
+    (client/main target)))

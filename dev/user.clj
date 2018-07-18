@@ -14,20 +14,16 @@
                    :infer-externs   true
                    :npm-deps        false
                    :foreign-libs    [{:file           "dist/index_bundle.js"
-                                      :provides       ["react"
-                                                       "cljsjs.react"
-                                                       "react-dom"
-                                                       "cljsjs.react.dom"
+                                      :provides       ["create-react-class"
+                                                       "react"
                                                        "material-ui.core"
-                                                       "material-ui.core.styles"]
+                                                       "material-ui.core.styles"
+                                                       "react-dom"]
                                       :global-exports {react                   React
-                                                       cljsjs.react            React
                                                        react-dom               ReactDOM
-                                                       cljsjs.react.dom        ReactDOM
+                                                       create-react-class      CreateReactClass
                                                        material-ui.core        MaterialUI
                                                        material-ui.core.styles MaterialStyles}}]
-
-
                    :closure-defines {goog.asserts.ENABLE_ASSERTS true
                                      goog.DEBUG                  true}
                    :output-dir      "resources/public/js/out"
