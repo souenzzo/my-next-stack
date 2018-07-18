@@ -1,5 +1,8 @@
 (ns client.views
-  (:require [reagent.core :as r]))
+  (:require [reagent.core :as r]
+            [material-ui.core :as m]))
+
+(def button (r/adapt-react-class m/Button))
 
 (defn ui-todo-item
   [{:keys [todo/text todo/done?]}]
@@ -14,7 +17,7 @@
   [{:keys [app/todos todo.new/text]}]
   [:div
    [:div text]
-   [:button "+"]
+   [button "+"]
    [:hr]
    [:div (map ui-todo-item todos)]])
 
