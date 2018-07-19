@@ -28,9 +28,19 @@
                      {:keys [tempids db-after]} @(d/transact conn tx-data)]
                  {})))
 
+(defmutation `app.counter/inc
+             {::pc/output [:app/counter]}
+             (fn [{:keys [state]} _]
+               {:app/counter (swap! state (fnil inc 0))}))
+
 (defmulti resolver-fn pc/resolver-dispatch)
 (def defresolver
   (pc/resolver-factory resolver-fn indexes))
+
+(defresolver `app-counter
+             {::pc/output [:app/counter]}
+             (fn [{:keys [state]} _]
+               {:app/counter @state}))
 
 (defresolver `app-todos
              {::pc/output [{:app/todos [:db/id
@@ -67,10 +77,13 @@
                 (doto (d/connect db-uri)
                   (d/transact-async schema))))
 
+(defonce state (atom nil))
+
 (defn api
   [{:keys [body]}]
   (prn [:in body])
-  (let [body (parser {:conn conn} body)]
+  (let [body (parser {:state state
+                      :conn  conn} body)]
     (prn [:out body])
     {:body   body
      :status 200}))

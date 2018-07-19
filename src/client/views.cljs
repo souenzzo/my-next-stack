@@ -21,6 +21,7 @@
 (def checkbox (r/adapt-react-class m/Checkbox))
 (def list-item-text (r/adapt-react-class m/ListItemText))
 (def text-field (r/adapt-react-class m/TextField))
+(def native-select (r/adapt-react-class m/NativeSelect))
 
 ;; IO
 (def writer (t/writer :json))
@@ -59,12 +60,22 @@
    [:hr]
    [list (map ui-todo-item todos)]])
 
+(defn page-counter
+  [{:keys [app/counter]}]
+  [:div {} (str counter) [button {:on-click #(rf/dispatch [:app.counter/inc])} "+"]])
+
 ;; events
 
 (rf/reg-event-db
   :todo.new/text
   (fn [db x]
     (apply assoc db x)))
+
+(rf/reg-event-fx
+  :app/page
+  (fn [{:keys [db]} [_ page]]
+    {:db       (assoc db :app/page page)
+     :dispatch [page]}))
 
 (rf/reg-event-db
   :fetch/todo
@@ -73,6 +84,18 @@
       (-> db
           (update :db/by-id merge todos-by-id)
           (assoc :app/todos (map :db/id todos))))))
+
+(rf/reg-event-db
+  :fetch/counter
+  (fn [db [_ {:keys [app/counter]}]]
+    (assoc db :app/counter counter)))
+
+(rf/reg-event-fx
+  :app.counter/inc
+  (fn [{:keys [db]} _]
+    {:db    (update db :app/counter (fnil inc 0))
+     :fetch {:query `[(app.counter/inc)]
+             :then  [:page/counter]}}))
 
 (rf/reg-event-fx
   :done-todo
@@ -96,6 +119,12 @@
      :fetch {:query [{:app/todos [:db/id :todo/text :todo/done?]}]
              :then  [:fetch/todo]}}))
 
+(rf/reg-event-fx
+  :page/counter
+  (fn [{:keys [db]} _]
+    {:fetch {:query [:app/counter]
+             :then  [:fetch/counter]}}))
+
 ;; subs
 
 (rf/reg-sub
@@ -105,14 +134,33 @@
                       (get by-id id))
      :todo.new/text text}))
 
+(rf/reg-sub
+  :page/counter
+  (fn [{:keys [app/counter]} _]
+    {:app/counter counter}))
+
+(rf/reg-sub
+  :app/page
+  (fn [{:keys [app/page]
+        :or   {page :page/todo}} _]
+    page))
 
 ;; "main" view
 
 (def pages
-  {:page/todo page-todo})
+  {:page/counter page-counter
+   :page/todo    page-todo})
 
 (defn root
   []
-  (let [page :page/todo
+  (let [page @(rf/subscribe [:app/page])
         data @(rf/subscribe [page])]
-    [(pages page) data]))
+    [:div
+     [native-select
+      {:value     (name page)
+       :on-change #(rf/dispatch [:app/page (->> % .-target .-value (keyword "page"))])}
+      (for [[k _] pages]
+        [:option {:key   (name k)
+                  :value (name k)} (name k)])]
+     [:hr]
+     [(pages page) data]]))
