@@ -3,6 +3,7 @@
   (:require [clojure.string :as string]
             [clojure.tools.reader.edn :as edn]
             [cognitect.transit :as transit]
+            [datomic.api :as d]
             [com.wsscode.pathom.connect :as pc]
             [com.wsscode.pathom.core :as p]
             [io.pedestal.http :as http]))
@@ -13,33 +14,34 @@
 (def defmutation
   (pc/mutation-factory mutation-fn indexes))
 
+(defmutation `app/new-todo
+             {}
+             (fn [{:keys [conn]} {:keys [todo/text]}]
+               (let [tx-data [{:todo/text text :todo/done? false}]
+                     {:keys [tempids db-after]} @(d/transact conn tx-data)]
+                 {})))
+
+(defmutation `app/done-todo
+             {}
+             (fn [{:keys [conn]} {:keys [todo/done? db/id]}]
+               (let [tx-data [{:db/id id :todo/done? done?}]
+                     {:keys [tempids db-after]} @(d/transact conn tx-data)]
+                 {})))
 
 (defmulti resolver-fn pc/resolver-dispatch)
 (def defresolver
   (pc/resolver-factory resolver-fn indexes))
 
-(defresolver `todo-data
-             {::pc/output [:todo/data]}
-             (fn [_ _] {:todo/data {}}))
-
-(defresolver `app-data
-             {::pc/output [:app/data]}
-             (fn [_ _] {:app/data {}}))
-
-
 (defresolver `app-todos
-             {::pc/output [:todo.new/text
-                           {:app/todos [:db/id
+             {::pc/output [{:app/todos [:db/id
                                         :todo/done?
                                         :todo/text]}]}
-             (fn [_ _]
-               {:todo.new/text "hello"
-                :app/todos     [{:db/id      1
-                                 :todo/text  "Do fulcro network!"
-                                 :todo/done? false}
-                                {:db/id      2
-                                 :todo/done? true
-                                 :todo/text  "Keep trying"}]}))
+             (fn [{:keys [conn query]} args]
+               {:app/todos (d/q '[:find [(pull ?e pattern) ...]
+                                  :in $ pattern
+                                  :where
+                                  [?e :todo/text]]
+                                (d/db conn) query)}))
 
 (def parser
   (p/parser {::p/env {::p/reader             [p/map-reader pc/all-readers]
@@ -48,12 +50,30 @@
                       ::pc/indexes           @indexes}
              :mutate pc/mutate}))
 
-#_(defonce conn (atom {}))
+(def schema
+  [{:db/ident       :todo/text
+    :db/valueType   :db.type/string
+    :db/cardinality :db.cardinality/one
+    :db/fulltext    true
+    :db/index       true}
+   {:db/ident       :todo/done?
+    :db/valueType   :db.type/boolean
+    :db/cardinality :db.cardinality/one
+    :db/index       true}])
+
+(defonce conn (let [db-uri "datomic:mem://my-next-stack"]
+                (d/delete-database db-uri)
+                (d/create-database db-uri)
+                (doto (d/connect db-uri)
+                  (d/transact-async schema))))
 
 (defn api
   [{:keys [body]}]
-  {:body   (parser {} body)
-   :status 200})
+  (prn [:in body])
+  (let [body (parser {:conn conn} body)]
+    (prn [:out body])
+    {:body   body
+     :status 200}))
 
 (def read-writer
   {:name  ::read-writer
@@ -70,7 +90,10 @@
             (let [writer (case accept
                            ("application/transit+json" "*/*") (fn [data]
                                                                 (fn [out]
-                                                                  (transit/write (transit/writer out :json) data)))
+                                                                  (try
+                                                                    (transit/write (transit/writer out :json) data)
+                                                                    (catch Throwable e
+                                                                      (prn e)))))
                            pr-str)]
               (-> ctx
                   (assoc-in [:response :headers "Content-Type"] (case accept "*/*" "application/transit+json" accept))

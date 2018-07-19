@@ -3,11 +3,14 @@
                  [com.cognitect/transit-clj "0.8.309"]
                  [com.cognitect/transit-cljs "0.8.256"]
                  [com.wsscode/pathom "2.0.14"]
+                 [com.datomic/datomic-free "0.9.5697"]
                  [io.pedestal/pedestal.jetty "0.5.4"]
                  [io.pedestal/pedestal.service "0.5.4"]
                  ;; ignore logging
                  [org.slf4j/slf4j-nop "1.8.0-beta2"]
                  ;; conflicts
+                 [com.google.guava/guava "25.1-jre"]
+                 [commons-codec/commons-codec "1.11"]
                  [cheshire/cheshire "5.8.0"]
                  [org.clojure/tools.reader "1.3.0"]
                  [org.clojure/test.check "0.10.0-alpha3"]]
