@@ -2,7 +2,7 @@
   :dependencies [[org.clojure/clojure "1.10.0-alpha6"]
                  [com.cognitect/transit-clj "0.8.309"]
                  [com.cognitect/transit-cljs "0.8.256"]
-                 [com.wsscode/pathom "2.0.14"]
+                 [com.wsscode/pathom "2.0.15"]
                  [com.datomic/datomic-free "0.9.5697"]
                  [io.pedestal/pedestal.jetty "0.5.4"]
                  [io.pedestal/pedestal.service "0.5.4"]
@@ -12,8 +12,7 @@
                  [com.google.guava/guava "25.1-jre"]
                  [commons-codec/commons-codec "1.11"]
                  [cheshire/cheshire "5.8.0"]
-                 [org.clojure/tools.reader "1.3.0"]
-                 [org.clojure/test.check "0.10.0-alpha3"]]
+                 [org.clojure/tools.reader "1.3.0"]]
   :source-paths ["src"]
   :main server.core
   :profiles {:client {:source-paths  ["src"]
@@ -28,6 +27,7 @@
                       :dependencies [[figwheel-sidecar/figwheel-sidecar "0.5.16"]
                                      [cider/piggieback "0.3.6"]
                                      [midje/midje "1.9.2"]
+                                     [org.clojure/test.check "0.10.0-alpha3"]
                                      ;; conflicts
                                      [org.clojure/tools.nrepl "0.2.13"]]
                       :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
