@@ -16,6 +16,7 @@
                    :foreign-libs    [{:file           "dist/index_bundle.js"
                                       :provides       ["create-react-class"
                                                        "react"
+                                                       "material-ui.icons"
                                                        "material-ui.core"
                                                        "material-ui.core.styles"
                                                        "react-dom"]
@@ -23,6 +24,7 @@
                                                        react-dom               ReactDOM
                                                        create-react-class      CreateReactClass
                                                        material-ui.core        MaterialUI
+                                                       material-ui.icons       Icons
                                                        material-ui.core.styles MaterialStyles}}]
                    :closure-defines {goog.asserts.ENABLE_ASSERTS true
                                      goog.DEBUG                  true}

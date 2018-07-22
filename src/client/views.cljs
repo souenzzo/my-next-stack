@@ -98,6 +98,23 @@
     {:fetch {:query [:app/counter]
              :then  [:fetch/counter]}}))
 
+(rf/reg-event-db
+  :user/username
+  (fn [{:keys [db]} kv]
+    (apply assoc db kv)))
+
+(rf/reg-event-fx
+  :app/login
+  (fn [{{:keys [app/page]} :db
+        :keys              [db]} [_ username]]
+    {:fetch {:query `[{(app/login ~{:user/username username}) [:user/username :user/token]}]
+             :then  [:fetch/login]}}))
+
+(rf/reg-event-db
+  :fetch/login
+  (fn [db [_ {:syms [app/login]}]]
+    (merge db login)))
+
 ;; subs
 
 (rf/reg-sub
@@ -117,6 +134,31 @@
   (fn [{:keys [app/page]
         :or   {page :page/todo}} _]
     page))
+(rf/reg-sub
+  :user/username
+  (fn [{:keys [user/username]
+        :or   {username ""}} _]
+    username))
+(rf/reg-sub
+  :user/token
+  (fn [{:keys [user/token]} _]
+    token))
+
+(rf/reg-event-db
+  :app/logout
+  (fn [db _]
+    (dissoc db :user/token)))
+
+(rf/reg-event-db
+  :app/swap-menu
+  (fn [db _]
+    (update db :app/menu-status not)))
+
+
+(rf/reg-sub
+  :app/menu-status
+  (fn [db _]
+    (boolean (:app/menu-status db))))
 
 ;; "main" view
 
@@ -127,13 +169,35 @@
 (defn root
   []
   (let [page @(rf/subscribe [:app/page])
+        open-menu? @(rf/subscribe [:app/menu-status])
+        username @(rf/subscribe [:user/username])
+        token @(rf/subscribe [:user/token])
         data @(rf/subscribe [page])]
     [a/Paper
-     [a/Paper
-      [a/NativeSelect
-       {:value     (name page)
-        :on-change #(rf/dispatch [:app/page (->> % .-target .-value (keyword "page"))])}
-       (for [[k _] pages]
-         [:option {:key   (name k)
-                   :value (name k)} (name k)])]]
+     [a/AppBar {:position :static}
+      [a/Toolbar
+       [a/IconButton
+        {:on-click #(rf/dispatch [:app/swap-menu])}
+        [a/MenuIcon]]
+       [a/Select
+        {:style     {:display :none}
+         :open      open-menu?
+         :on-close  #(rf/dispatch [:app/swap-menu])
+         :value     (name page)
+         :on-change #(rf/dispatch [:app/page (->> % .-target .-value (keyword "page"))])}
+        (for [[k _] pages]
+          [a/MenuItem {:key   (name k)
+                       :value (name k)} (name k)])]
+       [a/Typography {:style   {:flexGrow 1}
+                      :variant :title
+                      :color   :inherit} (name page)]
+       (if token
+         [a/Chip
+          {:label username :on-delete #(rf/dispatch [:app/logout])}]
+         [a/Paper
+          [a/Input {:value     username
+                    :on-change #(rf/dispatch-sync [:user/username (-> % .-target .-value)])}]
+          [a/Button {:variant  :contained
+                     :on-click #(rf/dispatch [:app/login username])
+                     :color    :secondary} "Login"]])]]
      [(pages page) data]]))

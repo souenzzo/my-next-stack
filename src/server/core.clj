@@ -37,7 +37,8 @@
              {::pc/output [:user/token]}
              (fn [_ {:keys [user/username]}]
                (let [token (jwt/sign {:username username} jwt-secret)]
-                 {:user/token token})))
+                 {:user/username username
+                  :user/token    token})))
 
 (defmutation `app.counter/inc
              {::pc/output [:app/counter]}
