@@ -33,6 +33,12 @@
                      {:keys [tempids db-after]} @(d/transact conn tx-data)]
                  {})))
 
+(defmutation `app/login
+             {::pc/output [:user/token]}
+             (fn [_ {:keys [user/username]}]
+               (let [token (jwt/sign {:username username} jwt-secret)]
+                 {:user/token token})))
+
 (defmutation `app.counter/inc
              {::pc/output [:app/counter]}
              (fn [{:keys [state]} _]
@@ -117,16 +123,8 @@
                   (assoc-in [:response :headers "Content-Type"] (case accept "*/*" "application/transit+json" accept))
                   (update-in [:response :body] writer))))})
 
-(defn login
-  [{{:keys [username]} :body
-    :keys              [db inst]}]
-  (let [token (jwt/sign {:username username} jwt-secret)]
-    {:headers {"Authorization" (format "Bearer %s" token)}
-     :status  200}))
-
 (def routes
-  `#{["/api" :post [read-writer api]]
-     ["/login" :post [read-writer login]]})
+  `#{["/api" :post [read-writer api]]})
 
 
 (defn context-configurator

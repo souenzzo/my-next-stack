@@ -25,16 +25,17 @@
 
 (defn page-todo
   [{:keys [app/todos todo.new/text]}]
-  [:div
-   [a/TextField {:on-change #(rf/dispatch-sync [:todo.new/text (-> % .-target .-value)])
-                 :value     text}]
-   [a/Button {:on-click #(rf/dispatch [:add-todo text])} "+"]
-   [:hr]
-   [a/List (map ui-todo-item todos)]])
+  [a/Paper
+   [a/Paper
+    [a/TextField {:on-change #(rf/dispatch-sync [:todo.new/text (-> % .-target .-value)])
+                  :value     text}]
+    [a/Button {:on-click #(rf/dispatch [:add-todo text])} "+"]]
+   [a/Paper
+    [a/List (map ui-todo-item todos)]]])
 
 (defn page-counter
   [{:keys [app/counter]}]
-  [:div {} (str counter) [a/Button {:on-click #(rf/dispatch [:app.counter/inc])} "+"]])
+  [a/Paper {} (str counter) [a/Button {:on-click #(rf/dispatch [:app.counter/inc])} "+"]])
 
 ;; events
 
@@ -127,12 +128,12 @@
   []
   (let [page @(rf/subscribe [:app/page])
         data @(rf/subscribe [page])]
-    [:div
-     [a/NativeSelect
-      {:value     (name page)
-       :on-change #(rf/dispatch [:app/page (->> % .-target .-value (keyword "page"))])}
-      (for [[k _] pages]
-        [:option {:key   (name k)
-                  :value (name k)} (name k)])]
-     [:hr]
+    [a/Paper
+     [a/Paper
+      [a/NativeSelect
+       {:value     (name page)
+        :on-change #(rf/dispatch [:app/page (->> % .-target .-value (keyword "page"))])}
+       (for [[k _] pages]
+         [:option {:key   (name k)
+                   :value (name k)} (name k)])]]
      [(pages page) data]]))
