@@ -4,9 +4,14 @@
             [clojure.tools.reader.edn :as edn]
             [cognitect.transit :as transit]
             [datomic.api :as d]
+            [buddy.sign.jwt :as jwt]
             [com.wsscode.pathom.connect :as pc]
             [com.wsscode.pathom.core :as p]
-            [io.pedestal.http :as http]))
+            [io.pedestal.http :as http])
+  (:import (org.eclipse.jetty.server.handler.gzip GzipHandler)
+           (org.eclipse.jetty.servlet ServletContextHandler)))
+
+(def jwt-secret "5ec688a8-e42c-491d-bcec-0559d710e050")
 
 (def indexes (atom {}))
 
@@ -111,18 +116,37 @@
               (-> ctx
                   (assoc-in [:response :headers "Content-Type"] (case accept "*/*" "application/transit+json" accept))
                   (update-in [:response :body] writer))))})
+
+(defn login
+  [{{:keys [username]} :body
+    :keys              [db inst]}]
+  (let [token (jwt/sign {:username username} jwt-secret)]
+    {:headers {"Authorization" (format "Bearer %s" token)}
+     :status  200}))
+
 (def routes
-  `#{["/api" :post [read-writer api]]})
+  `#{["/api" :post [read-writer api]]
+     ["/login" :post [read-writer login]]})
+
+
+(defn context-configurator
+  [^ServletContextHandler context]
+  (let [gzip-handler (GzipHandler.)]
+    (.setExcludedAgentPatterns gzip-handler (make-array String 0))
+    (.setGzipHandler context gzip-handler))
+  context)
 
 (def service
-  (-> {::http/routes          routes
-       ::http/port            8080
-       ::http/join?           false
-       ::http/type            :jetty
-       ::http/cred            true
-       ::http/allowed-origins {:creds           true
-                               :allowed-origins (constantly true)}
-       ::http/secure-headers  {:content-security-policy-settings ""}}
+  (-> {::http/routes            routes
+       ::http/port              8080
+       ::http/join?             false
+       ::http/type              :jetty
+       ::http/cred              true
+       ::http/allowed-origins   {:creds           true
+                                 :allowed-origins (constantly true)}
+       ::http/container-options {:h2c?                 true
+                                 :context-configurator context-configurator}
+       ::http/secure-headers    {:content-security-policy-settings ""}}
       http/default-interceptors
       http/dev-interceptors
       http/create-server))

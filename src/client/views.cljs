@@ -3,7 +3,7 @@
   (:require [reagent.core :as r]
             [re-frame.core :as rf]
             [cognitect.transit :as t]
-            [material-ui.core :as m]))
+            [client.atoms :as a]))
 ;; utils
 (defn index-by
   [f coll]
@@ -12,16 +12,6 @@
               (let [k (f x)]
                 (assoc! ret k x)))
             (transient {}) coll)))
-
-
-;; ui
-(def button (r/adapt-react-class m/Button))
-(def list (r/adapt-react-class m/List))
-(def list-item (r/adapt-react-class m/ListItem))
-(def checkbox (r/adapt-react-class m/Checkbox))
-(def list-item-text (r/adapt-react-class m/ListItemText))
-(def text-field (r/adapt-react-class m/TextField))
-(def native-select (r/adapt-react-class m/NativeSelect))
 
 ;; IO
 (def writer (t/writer :json))
@@ -45,24 +35,24 @@
 
 (defn ui-todo-item
   [{:keys [db/id todo/text todo/done?]}]
-  [list-item
+  [a/ListItem
    {:key (str id)}
-   [checkbox {:onChange #(rf/dispatch [:done-todo id (-> % .-target .-checked)])
-              :checked  done?}]
-   [list-item-text {:primary text}]])
+   [a/Checkbox {:onChange #(rf/dispatch [:done-todo id (-> % .-target .-checked)])
+                :checked  done?}]
+   [a/ListItemText {:primary text}]])
 
 (defn page-todo
   [{:keys [app/todos todo.new/text]}]
   [:div
-   [text-field {:on-change #(rf/dispatch-sync [:todo.new/text (-> % .-target .-value)])
-                :value     text}]
-   [button {:on-click #(rf/dispatch [:add-todo text])} "+"]
+   [a/TextField {:on-change #(rf/dispatch-sync [:todo.new/text (-> % .-target .-value)])
+                 :value     text}]
+   [a/Button {:on-click #(rf/dispatch [:add-todo text])} "+"]
    [:hr]
-   [list (map ui-todo-item todos)]])
+   [a/List (map ui-todo-item todos)]])
 
 (defn page-counter
   [{:keys [app/counter]}]
-  [:div {} (str counter) [button {:on-click #(rf/dispatch [:app.counter/inc])} "+"]])
+  [:div {} (str counter) [a/Button {:on-click #(rf/dispatch [:app.counter/inc])} "+"]])
 
 ;; events
 
@@ -156,7 +146,7 @@
   (let [page @(rf/subscribe [:app/page])
         data @(rf/subscribe [page])]
     [:div
-     [native-select
+     [a/NativeSelect
       {:value     (name page)
        :on-change #(rf/dispatch [:app/page (->> % .-target .-value (keyword "page"))])}
       (for [[k _] pages]

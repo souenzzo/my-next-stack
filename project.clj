@@ -1,5 +1,6 @@
 (defproject my-next-stack "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.10.0-alpha6"]
+                 [buddy/buddy-sign "3.0.0"]
                  [com.cognitect/transit-clj "0.8.309"]
                  [com.cognitect/transit-cljs "0.8.256"]
                  [com.wsscode/pathom "2.0.15"]
