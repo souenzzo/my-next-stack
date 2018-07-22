@@ -13,24 +13,6 @@
                 (assoc! ret k x)))
             (transient {}) coll)))
 
-;; IO
-(def writer (t/writer :json))
-(def reader (t/reader :json))
-
-(def headers #js{:Content-Type "application/transit+json"
-                 :Accept       "application/transit+json"})
-
-(def api "http://localhost:8080/api")
-
-(rf/reg-fx
-  :fetch
-  (fn [{:keys [query then]}]
-    (let [fetch (.fetch js/window api #js {:method  "POST"
-                                           :headers headers
-                                           :body    (t/write writer query)})]
-      (.then (.then fetch (fn [res] (.text res))) (fn [text]
-                                                    (rf/dispatch-sync (conj then (t/read reader text))))))))
-
 ;; view
 
 (defn ui-todo-item
