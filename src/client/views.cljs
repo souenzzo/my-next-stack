@@ -1,9 +1,7 @@
 (ns client.views
-  (:refer-clojure :exclude [list])
-  (:require [reagent.core :as r]
-            [re-frame.core :as rf]
-            [cognitect.transit :as t]
-            [client.atoms :as a]))
+  (:require [re-frame.core :as rf]
+            [client.atoms :as a]
+            [clojure.string :as string]))
 ;; utils
 (defn index-by
   [f coll]
@@ -198,6 +196,7 @@
           [a/Input {:value     username
                     :on-change #(rf/dispatch-sync [:user/username (-> % .-target .-value)])}]
           [a/Button {:variant  :contained
+                     :disabled (string/blank? username)
                      :on-click #(rf/dispatch [:app/login username])
                      :color    :secondary} "Login"]])]]
      [(pages page) data]]))
