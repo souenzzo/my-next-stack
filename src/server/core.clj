@@ -1,15 +1,20 @@
 (ns server.core
   (:gen-class)
-  (:require [clojure.string :as string]
+  (:require [buddy.sign.jwt :as jwt]
+            [clojure.string :as string]
             [clojure.tools.reader.edn :as edn]
             [cognitect.transit :as transit]
-            [datomic.api :as d]
-            [buddy.sign.jwt :as jwt]
             [com.wsscode.pathom.connect :as pc]
             [com.wsscode.pathom.core :as p]
-            [io.pedestal.http :as http])
+            [datomic.api :as d]
+            [io.pedestal.http :as http]
+            [server.telegram :as telegram])
   (:import (org.eclipse.jetty.server.handler.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler)))
+
+(defn ^:dynamic rand-int-in
+  [min max]
+  (+ min (rand-int (- max min))))
 
 (def jwt-secret "5ec688a8-e42c-491d-bcec-0559d710e050")
 
@@ -33,17 +38,28 @@
                      {:keys [tempids db-after]} @(d/transact conn tx-data)]
                  {})))
 
+(defmutation `app/send-two-factor
+             {::pc/output [:app/two-factor]}
+             (fn [{:keys [state telegram/token]} {:keys [user/username]}]
+               (let [code (rand-int-in 1000 10000)
+                     text (format "Verification code: %s" code)]
+                 (swap! state update :two-factor assoc username code)
+                 {:app/two-factor (telegram/send-two-factor! token username text)})))
+
 (defmutation `app/login
-             {::pc/output [:user/token]}
-             (fn [_ {:keys [user/username]}]
-               (let [token (jwt/sign {:username username} jwt-secret)]
-                 {:user/username username
-                  :user/token    token})))
+             {::pc/output [:user/token :user/username]}
+             (fn [{:keys [state]} {:keys [user/username user/two-factor]}]
+               (let [ids (:two-factor @state)
+                     token (jwt/sign {:username username} jwt-secret)]
+                 (when (= (str (get ids username))
+                          (str two-factor))
+                   {:user/username username
+                    :user/token    token}))))
 
 (defmutation `app.counter/inc
              {::pc/output [:app/counter]}
              (fn [{:keys [state]} _]
-               {:app/counter (swap! state (fnil inc 0))}))
+               {:app/counter (swap! state update :counter (fnil inc 0))}))
 
 (defmulti resolver-fn pc/resolver-dispatch)
 (def defresolver
@@ -52,7 +68,7 @@
 (defresolver `app-counter
              {::pc/output [:app/counter]}
              (fn [{:keys [state]} _]
-               {:app/counter @state}))
+               {:app/counter (:counter @state)}))
 
 (defresolver `app-todos
              {::pc/output [{:app/todos [:db/id
@@ -94,8 +110,9 @@
 (defn api
   [{:keys [body]}]
   (prn [:in body])
-  (let [body (parser {:state state
-                      :conn  conn} body)]
+  (let [body (parser {:state          state
+                      :telegram/token (System/getenv "TELEGRAM_TOKEN")
+                      :conn           conn} body)]
     (prn [:out body])
     {:body   body
      :status 200}))
@@ -127,7 +144,6 @@
 (def routes
   `#{["/api" :post [read-writer api]]})
 
-
 (defn context-configurator
   [^ServletContextHandler context]
   (let [gzip-handler (GzipHandler.)]
@@ -151,7 +167,6 @@
       http/create-server))
 
 (defonce http-service (atom nil))
-
 (defn -main
   [& argv]
   (println "\nCreating your server...")

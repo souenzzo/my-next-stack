@@ -1,7 +1,8 @@
 (ns client.views
   (:require [re-frame.core :as rf]
             [client.atoms :as a]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [reagent.core :as r]))
 ;; utils
 (defn index-by
   [f coll]
@@ -98,20 +99,48 @@
 
 (rf/reg-event-db
   :user/username
-  (fn [{:keys [db]} kv]
-    (apply assoc db kv)))
+  (fn [{:keys [db]} [_ v]]
+    (assoc-in db [:app/auth :user/username] v)))
+
+(rf/reg-event-fx
+  :app/send-two-factor
+  (fn [{{:keys [app/page]} :db
+        :keys              [db]} [_ username]]
+    {:fetch {:query `[(app/send-two-factor ~{:user/username username})]
+             :then  [:fetch.ok/send-to-factor]}}))
+
+(rf/reg-event-fx
+  :fetch.ok/send-to-factor
+  (fn [{:keys [db]} _]
+    {:db       (assoc-in db [:app/auth :user/two-factor-in-progress?] true)
+     :dispatch [:app/toast {:text "Checkout your telegram"}]}))
+
+(rf/reg-event-db
+  :app/toast
+  (fn [db [_ {:keys [text]}]]
+    (let [id (str (gensym "toast"))]
+      (-> db
+          (assoc-in [:db/by-id id] {:db/id id :toast/text text})
+          (update :app/toast (fnil conj []) id)))))
+
+(rf/reg-event-db
+  :app.toast/remove
+  (fn [db [_ id]]
+    (-> db
+        (update :db/by-id dissoc id)
+        (update :app/toast (partial remove #{id})))))
 
 (rf/reg-event-fx
   :app/login
   (fn [{{:keys [app/page]} :db
-        :keys              [db]} [_ username]]
-    {:fetch {:query `[{(app/login ~{:user/username username}) [:user/username :user/token]}]
+        :keys              [db]} [_ username two-factor]]
+    {:fetch {:query `[{(app/login ~{:user/username username :user/two-factor two-factor}) [:user/username :user/token]}]
              :then  [:fetch/login]}}))
 
 (rf/reg-event-db
   :fetch/login
   (fn [db [_ {:syms [app/login]}]]
-    (merge db login)))
+    (update db :app/auth merge login {:user/authed? true})))
 
 ;; subs
 
@@ -133,26 +162,31 @@
         :or   {page :page/todo}} _]
     page))
 (rf/reg-sub
-  :user/username
-  (fn [{:keys [user/username]
-        :or   {username ""}} _]
-    username))
+  :app/auth
+  (fn [{:keys [app/auth]} _]
+    auth))
+
 (rf/reg-sub
-  :user/token
-  (fn [{:keys [user/token]} _]
-    token))
+  :app/toast
+  (fn [{:keys [app/toast db/by-id]} _]
+    (map by-id toast)))
+
+
 
 (rf/reg-event-db
   :app/logout
   (fn [db _]
-    (dissoc db :user/token)))
+    (dissoc db :app/auth)))
 
 (rf/reg-event-db
   :app/swap-menu
   (fn [db _]
     (update db :app/menu-status not)))
 
-
+(rf/reg-event-db
+  :user/two-factor
+  (fn [db [_ v]]
+    (assoc-in db [:app/auth :user/two-factor] v)))
 (rf/reg-sub
   :app/menu-status
   (fn [db _]
@@ -164,12 +198,37 @@
   {:page/counter page-counter
    :page/todo    page-todo})
 
+(defn ui-auth
+  [{:keys [user/authed?
+           user/username
+           user/two-factor
+           user/two-factor-in-progress?]
+    :or   {two-factor ""}}]
+  (cond
+    authed? [a/Chip
+             {:label username :on-delete #(rf/dispatch [:app/logout])}]
+    two-factor-in-progress? [a/Paper
+                             [a/Input {:value     two-factor
+                                       :on-change #(rf/dispatch-sync [:user/two-factor (-> % .-target .-value)])}]
+                             [a/Button {:variant  :contained
+                                        :disabled (string/blank? two-factor)
+                                        :on-click #(rf/dispatch [:app/login username two-factor])
+                                        :color    :secondary} "Confirm"]]
+    :else [a/Paper
+           [a/Input {:value     username
+                     :on-change #(rf/dispatch-sync [:user/username (-> % .-target .-value)])}]
+           [a/Button {:variant  :contained
+                      :disabled (string/blank? username)
+                      :on-click #(rf/dispatch [:app/send-two-factor username])
+                      :color    :secondary} "Login"]]))
+
+
 (defn root
   []
   (let [page @(rf/subscribe [:app/page])
+        toasts @(rf/subscribe [:app/toast])
         open-menu? @(rf/subscribe [:app/menu-status])
-        username @(rf/subscribe [:user/username])
-        token @(rf/subscribe [:user/token])
+        auth @(rf/subscribe [:app/auth])
         data @(rf/subscribe [page])]
     [a/Paper
      [a/AppBar {:position :static}
@@ -189,14 +248,14 @@
        [a/Typography {:style   {:flexGrow 1}
                       :variant :title
                       :color   :inherit} (name page)]
-       (if token
-         [a/Chip
-          {:label username :on-delete #(rf/dispatch [:app/logout])}]
-         [a/Paper
-          [a/Input {:value     username
-                    :on-change #(rf/dispatch-sync [:user/username (-> % .-target .-value)])}]
-          [a/Button {:variant  :contained
-                     :disabled (string/blank? username)
-                     :on-click #(rf/dispatch [:app/login username])
-                     :color    :secondary} "Login"]])]]
+       [ui-auth auth]]]
+     (for [{:keys [db/id toast/text]} toasts
+           :let [on-close #(rf/dispatch [:app.toast/remove id])]]
+       [a/Snackbar {:key           id
+                    :anchor-origin #js {:vertical   "bottom"
+                                        :horizontal "left"}
+                    :open          true
+                    :message       (r/as-component [:span text])
+                    :action        #js [(r/as-component [a/IconButton {:on-click on-close} "X"])]
+                    :on-close      on-close}])
      [(pages page) data]]))

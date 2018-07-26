@@ -1,5 +1,7 @@
 (defproject my-next-stack "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.10.0-alpha6"]
+                 [org.clojure/core.async "0.4.474"]
+                 [io.pedestal/pedestal.interceptor "0.5.4"]
                  [buddy/buddy-sign "3.0.0"]
                  [com.cognitect/transit-clj "0.8.309"]
                  [com.cognitect/transit-cljs "0.8.256"]
@@ -7,6 +9,7 @@
                  [com.datomic/datomic-free "0.9.5697"]
                  [io.pedestal/pedestal.jetty "0.5.4"]
                  [io.pedestal/pedestal.service "0.5.4"]
+                 [org.clojure/data.json "0.2.6"]
                  ;; ignore logging
                  [org.slf4j/slf4j-nop "1.8.0-beta2"]
                  ;; conflicts
