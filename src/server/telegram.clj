@@ -1,21 +1,38 @@
 (ns server.telegram
-  (:require [clojure.core.async :as async]
-            [clojure.data.json :as json])
-  (:import (java.nio.charset StandardCharsets)
-           (java.net URLEncoder)))
+  (:require [clojure.data.json :as json]
+            [clojure.string :as string])
+  (:import (clojure.lang Keyword)
+           (java.net URLEncoder)
+           (java.nio.charset StandardCharsets)))
 
-(defn encode
-  [s]
-  (URLEncoder/encode (str s) StandardCharsets/UTF_8))
+(defprotocol IEncode
+  (encode [this]))
 
-(defn send-message
-  [{::keys [token chat-id text]}]
-  (format "https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s"
-          token (encode chat-id) (encode text)))
+(extend-protocol IEncode
+  Number
+  (encode [s]
+    (encode (str s)))
+  String
+  (encode [s]
+    (URLEncoder/encode s StandardCharsets/UTF_8))
+  Keyword
+  (encode [s]
+    (encode (name s))))
 
-(defn get-updates
-  [{::keys [token]}]
-  (format "https://api.telegram.org/bot%s/getUpdates" token))
+(defn args->query
+  [args]
+  (if (empty? args)
+    ""
+    (string/join "&" (for [[k v] args]
+                       (string/join "=" (map encode [k v]))))))
+
+(defn method-uri
+  ([token method] (method-uri token method nil))
+  ([token method args]
+   (let [uri (format "https://api.telegram.org/bot%s/%s" token (encode method))]
+     (if (empty? args)
+       uri
+       (format "%s?%s" uri (args->query args))))))
 
 (defn request!
   [uri]
@@ -34,9 +51,9 @@
 
 (defn send-two-factor!
   [token username text]
-  (let [updates (request! (get-updates {::token token}))
+  (let [updates (request! (method-uri token :getUpdates))
         username->chat-id (updates->user-index updates)
         chat-id (username->chat-id username)]
     (if-not chat-id
       ::fail
-      (request! (send-message {::token token ::chat-id chat-id ::text text})))))
+      (request! (method-uri token :sendMessage {:chat_id chat-id :text text})))))

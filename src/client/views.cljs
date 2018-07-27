@@ -171,8 +171,6 @@
   (fn [{:keys [app/toast db/by-id]} _]
     (map by-id toast)))
 
-
-
 (rf/reg-event-db
   :app/logout
   (fn [db _]
