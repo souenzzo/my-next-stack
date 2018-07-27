@@ -49,11 +49,18 @@
               (map (juxt :username :id)))
         updates))
 
+(defn send-two-factor
+  [token username text updates]
+  (let [username->chat-id (updates->user-index updates)
+        chat-id (username->chat-id username)]
+    (when chat-id
+      (method-uri token :sendMessage {:chat_id chat-id :text text}))))
+
+
 (defn send-two-factor!
   [token username text]
   (let [updates (request! (method-uri token :getUpdates))
-        username->chat-id (updates->user-index updates)
-        chat-id (username->chat-id username)]
-    (if-not chat-id
+        send-message-uri (send-two-factor token username text updates)]
+    (if-not send-message-uri
       ::fail
-      (request! (method-uri token :sendMessage {:chat_id chat-id :text text})))))
+      (request! send-message-uri))))
