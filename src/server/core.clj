@@ -41,7 +41,7 @@
 (defmutation `app/send-two-factor
              {::pc/output [:app/two-factor]}
              (fn [{:keys [state telegram/token]} {:keys [user/username]}]
-               (let [code (rand-int-in 1000 10000)
+               (let [code (format "%04d" (rand-int-in 0 10000))
                      text (format "Verification code: %s" code)]
                  (swap! state update :two-factor assoc username code)
                  {:app/two-factor (telegram/send-two-factor! token username text)})))
@@ -51,8 +51,7 @@
              (fn [{:keys [state]} {:keys [user/username user/two-factor]}]
                (let [ids (:two-factor @state)
                      token (jwt/sign {:username username} jwt-secret)]
-                 (when (= (str (get ids username))
-                          (str two-factor))
+                 (when (= (get ids username) two-factor)
                    {:user/username username
                     :user/token    token}))))
 
