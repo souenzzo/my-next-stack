@@ -5,7 +5,7 @@
                  [buddy/buddy-sign "3.0.0"]
                  [com.cognitect/transit-clj "0.8.309"]
                  [com.cognitect/transit-cljs "0.8.256"]
-                 [com.wsscode/pathom "2.0.15"]
+                 [com.wsscode/pathom "2.0.16"]
                  [com.datomic/datomic-free "0.9.5697"]
                  [io.pedestal/pedestal.jetty "0.5.4"]
                  [io.pedestal/pedestal.service "0.5.4"]
@@ -29,8 +29,10 @@
                                                                             cljsjs/create-react-class]]]}
              :dev    {:source-paths ["src" "dev" "test"]
                       :dependencies [[figwheel-sidecar/figwheel-sidecar "0.5.16"]
-                                     [cider/piggieback "0.3.6"]
+                                     [cider/piggieback "0.3.8"]
                                      [midje/midje "1.9.2"]
+                                     [devcards/devcards "0.2.5" :exclusions [cljsjs/react
+                                                                             cljsjs/react-dom]]
                                      [org.clojure/test.check "0.10.0-alpha3"]
                                      ;; conflicts
                                      [org.clojure/tools.nrepl "0.2.13"]]
