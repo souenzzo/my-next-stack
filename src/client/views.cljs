@@ -205,27 +205,30 @@
    :page/todo    page-todo})
 
 (defn ui-auth
-  [{:keys [user/authed?
-           user/username
-           user/two-factor
-           user/two-factor-in-progress?]
-    :or   {two-factor ""}}]
+  [{{:keys [user/authed?
+            user/username
+            user/two-factor
+            user/two-factor-in-progress?]} :user
+    :keys                                  [on-logout
+                                            on-login
+                                            on-username-text
+                                            on-request-two-factor
+                                            on-two-factor-text]}]
   (cond
-    authed? [a/Chip
-             {:label username :on-delete #(rf/dispatch [:app/logout])}]
+    authed? [a/Chip {:label username :on-delete on-logout}]
     two-factor-in-progress? [a/Paper
-                             [a/Input {:value     two-factor
-                                       :on-change #(rf/dispatch-sync [:user/two-factor (-> % .-target .-value)])}]
+                             [a/Input {:value     (or two-factor "")
+                                       :on-change #(on-two-factor-text (-> % .-target .-value))}]
                              [a/Button {:variant  :contained
                                         :disabled (string/blank? two-factor)
-                                        :on-click #(rf/dispatch [:app/login username two-factor])
+                                        :on-click #(on-login username two-factor)
                                         :color    :secondary} "Confirm"]]
     :else [a/Paper
            [a/Input {:value     username
-                     :on-change #(rf/dispatch-sync [:user/username (-> % .-target .-value)])}]
+                     :on-change #(on-username-text (-> % .-target .-value))}]
            [a/Button {:variant  :contained
                       :disabled (string/blank? username)
-                      :on-click #(rf/dispatch [:app/send-two-factor username])
+                      :on-click #(on-request-two-factor username)
                       :color    :secondary} "Login"]]))
 
 
@@ -254,7 +257,12 @@
        [a/Typography {:style   {:flexGrow 1}
                       :variant :title
                       :color   :inherit} (name page)]
-       [ui-auth auth]]]
+       [ui-auth {:on-logout             #(rf/dispatch [:app/logout])
+                 :on-two-factor-text    #(rf/dispatch-sync [:user/two-factor %])
+                 :on-username-text      #(rf/dispatch-sync [:user/username %])
+                 :on-request-two-factor #(rf/dispatch [:app/send-two-factor %])
+                 :on-login              (fn [username two-factor] (rf/dispatch [:app/login username two-factor]))
+                 :user                  auth}]]]
      (for [{:keys [db/id toast/text]} toasts
            :let [on-close #(rf/dispatch [:app.toast/remove id])]]
        [a/Snackbar {:key           id
