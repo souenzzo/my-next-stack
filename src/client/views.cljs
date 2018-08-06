@@ -19,13 +19,19 @@
                 :checked   done?}]
    [a/ListItemText {:primary text}]])
 
+(defn ui-new-todo
+  [{:keys [text on-text on-add]}]
+  [a/Paper
+   [a/TextField {:on-change #(on-text (-> % .-target .-value))
+                 :value     text}]
+   [a/Button {:on-click #(on-add text)} "+"]])
+
 (defn page-todo
   [{:keys [app/todos todo.new/text]}]
   [a/Paper
-   [a/Paper
-    [a/TextField {:on-change #(rf/dispatch-sync [:todo.new/text (-> % .-target .-value)])
-                  :value     text}]
-    [a/Button {:on-click #(rf/dispatch [:add-todo text])} "+"]]
+   [ui-new-todo {:text    text
+                 :on-add  #(rf/dispatch [:add-todo text])
+                 :on-text #(rf/dispatch-sync [:todo.new/text %])}]
    [a/Paper
     [a/List
      (for [{:keys [db/id todo/text todo/done?]} todos]
