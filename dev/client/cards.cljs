@@ -1,10 +1,15 @@
 (ns client.cards
-  (:require [client.views])
-  (:require-macros [devcards.core :as dc]))
+  (:require [client.views :as v]
+            [devcards.core :as dc :include-macros true]
+            [reagent.core :as r]))
 
-(defn ui-hello
-  [& _]
-  [:div "hello!!!!"])
-
-(dc/defcard my-first-card
-  (dc/reagent ui-hello))
+(dc/defcard todo-item
+  "**todo item**"
+  (dc/reagent (fn [state owner]
+                (let [{:keys [text done?]} @state]
+                  [v/ui-todo-item {:text      text
+                                   :done?     done?
+                                   :on-change #(swap! state assoc :done? %)}])))
+  (r/atom {:text "Hello!" :done? false})
+  {:inspect-data true
+   :history      true})

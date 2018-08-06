@@ -6,20 +6,17 @@
 ;; utils
 (defn index-by
   [f coll]
-  (persistent!
-    (reduce (fn [ret x]
-              (let [k (f x)]
-                (assoc! ret k x)))
-            (transient {}) coll)))
+  (-> (fn [acc v] (assoc! acc (f v) v))
+      (reduce (transient {}) coll)
+      persistent!))
 
 ;; view
 
 (defn ui-todo-item
-  [{:keys [db/id todo/text todo/done?]}]
+  [{:keys [text done? on-change]}]
   [a/ListItem
-   {:key (str id)}
-   [a/Checkbox {:onChange #(rf/dispatch [:done-todo id (-> % .-target .-checked)])
-                :checked  done?}]
+   [a/Checkbox {:on-change #(on-change (-> % .-target .-checked))
+                :checked   done?}]
    [a/ListItemText {:primary text}]])
 
 (defn page-todo
@@ -30,7 +27,12 @@
                   :value     text}]
     [a/Button {:on-click #(rf/dispatch [:add-todo text])} "+"]]
    [a/Paper
-    [a/List (map ui-todo-item todos)]]])
+    [a/List
+     (for [{:keys [db/id todo/text todo/done?]} todos]
+       [ui-todo-item {:key       id
+                      :on-change #(rf/dispatch [:done-todo id %])
+                      :text      text
+                      :done?     done?}])]]])
 
 (defn page-counter
   [{:keys [app/counter]}]
