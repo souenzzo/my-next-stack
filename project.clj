@@ -4,7 +4,6 @@
                  [io.pedestal/pedestal.interceptor "0.5.4"]
                  [buddy/buddy-sign "3.0.0"]
                  [com.cognitect/transit-clj "0.8.309"]
-                 [com.cognitect/transit-cljs "0.8.256"]
                  [com.wsscode/pathom "2.0.16"]
                  [com.datomic/datomic-free "0.9.5697"]
                  [io.pedestal/pedestal.jetty "0.5.4"]
@@ -22,6 +21,7 @@
   :profiles {:client {:source-paths  ["src"]
                       :clean-targets ^{:protect false} ["resources/public/js" "dist/"]
                       :dependencies  [[org.clojure/clojurescript "1.10.339"]
+                                      [com.cognitect/transit-cljs "0.8.256"]
                                       [re-frame/re-frame "0.10.5"]
                                       [reagent/reagent "0.8.1" :exclusions [cljsjs/react
                                                                             cljsjs/react-dom
