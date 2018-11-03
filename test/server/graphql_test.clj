@@ -8,7 +8,7 @@
 
 (deftest lacinia-demo
   (let [requests (atom [])
-        api-url "http://my-facke.domain"
+        api-url "http://my-fake.domain"
         http-driver (fn [{::http/keys [url] :as ctx}]
                       (swap! requests conj url)
                       (let [pattern (re-pattern (format "^%s/api" api-url))
@@ -16,15 +16,15 @@
                         (cond
                           (= path "/users") (for [i (range 3)]
                                               {:id        i
-                                               :name      (str "Usuario - " i)
+                                               :name      (str "User - " i)
                                                :addresses [1 2 3]})
                           (string/starts-with? path "/address") (let [[_ address-id user-id] (re-matches #"/address/([^?]+)\?user-id=(.+)" path)]
                                                                   {:id     (bigint address-id)
                                                                    :street (str "street " address-id user-id)})
-                          :else (-> (str "404: '" (pr-str url) "' não existe")
+                          :else (-> (str "404: '" (pr-str url) "' not found")
                                     (ex-info ctx)
                                     (throw)))))
-        context {:api-url      "http://my-facke.domain"
+        context {:api-url      api-url
                  ::http/driver http-driver}]
     (fact
       "Hello world"
@@ -39,9 +39,9 @@
                        "{ users { id name } }"
                        {}
                        context)
-      => {:data {:users [{:id 0 :name "Usuario - 0"}
-                         {:id 1 :name "Usuario - 1"}
-                         {:id 2 :name "Usuario - 2"}]}})
+      => {:data {:users [{:id 0 :name "User - 0"}
+                         {:id 1 :name "User - 1"}
+                         {:id 2 :name "User - 2"}]}})
     (fact
       "users with address"
       (lacinia/execute gql/schema
@@ -52,28 +52,28 @@
                                       {:id 2 :street "street 20"}
                                       {:id 3 :street "street 30"}]
                           :id        0
-                          :name      "Usuario - 0"}
+                          :name      "User - 0"}
                          {:addresses [{:id 1 :street "street 11"}
                                       {:id 2 :street "street 21"}
                                       {:id 3 :street "street 31"}]
                           :id        1
-                          :name      "Usuario - 1"}
+                          :name      "User - 1"}
                          {:addresses [{:id 1 :street "street 12"}
                                       {:id 2 :street "street 22"}
                                       {:id 3 :street "street 32"}]
                           :id        2
-                          :name      "Usuario - 2"}]}})
+                          :name      "User - 2"}]}})
     (fact
       "http calls"
       @requests
-      => ["http://my-facke.domain/api/users"
-          "http://my-facke.domain/api/users"
-          "http://my-facke.domain/api/address/1?user-id=0"
-          "http://my-facke.domain/api/address/2?user-id=0"
-          "http://my-facke.domain/api/address/3?user-id=0"
-          "http://my-facke.domain/api/address/1?user-id=1"
-          "http://my-facke.domain/api/address/2?user-id=1"
-          "http://my-facke.domain/api/address/3?user-id=1"
-          "http://my-facke.domain/api/address/1?user-id=2"
-          "http://my-facke.domain/api/address/2?user-id=2"
-          "http://my-facke.domain/api/address/3?user-id=2"])))
+      => ["http://my-fake.domain/api/users"
+          "http://my-fake.domain/api/users"
+          "http://my-fake.domain/api/address/1?user-id=0"
+          "http://my-fake.domain/api/address/2?user-id=0"
+          "http://my-fake.domain/api/address/3?user-id=0"
+          "http://my-fake.domain/api/address/1?user-id=1"
+          "http://my-fake.domain/api/address/2?user-id=1"
+          "http://my-fake.domain/api/address/3?user-id=1"
+          "http://my-fake.domain/api/address/1?user-id=2"
+          "http://my-fake.domain/api/address/2?user-id=2"
+          "http://my-fake.domain/api/address/3?user-id=2"])))
