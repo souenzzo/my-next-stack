@@ -10,6 +10,7 @@
                  [io.pedestal/pedestal.jetty "0.5.4"]
                  [io.pedestal/pedestal.service "0.5.4"]
                  [org.clojure/data.json "0.2.6"]
+                 [walkable "1.0.0-SNAPSHOT"]
                  ;; ignore logging
                  [org.slf4j/slf4j-nop "1.8.0-beta2"]
                  ;; conflicts

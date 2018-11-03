@@ -11,6 +11,7 @@
                                         "react"
                                         "material-ui.icons"
                                         "cljsjs.react"
+                                        "cljsjs.marked"
                                         "cljsjs.react.dom"
                                         "material-ui.core"
                                         "material-ui.core.styles"
@@ -20,6 +21,7 @@
                                         react-dom               ReactDOM
                                         cljsjs.react.dom        ReactDOM
                                         create-react-class      CreateReactClass
+                                        cljsjs.marked           marked
                                         material-ui.core        MaterialUI
                                         material-ui.icons       Icons
                                         material-ui.core.styles MaterialStyles}}]
