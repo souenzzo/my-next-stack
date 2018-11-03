@@ -33,8 +33,10 @@
                       :dependencies [[figwheel-sidecar/figwheel-sidecar "0.5.17"]
                                      [cider/piggieback "0.3.10"]
                                      [midje/midje "1.9.4"]
-                                     [devcards/devcards "0.2.5" :exclusions [cljsjs/react
-                                                                             cljsjs/react-dom]]
+                                     [devcards/devcards "0.2.6" :exclusions [cljsjs/react
+                                                                             cljsjs/react-dom
+                                                                             cljsjs/marked
+                                                                             cljsjs/create-react-class]]
                                      [org.clojure/test.check "0.10.0-alpha3"]
                                      ;; conflicts
                                      [org.clojure/tools.nrepl "0.2.13"]]
