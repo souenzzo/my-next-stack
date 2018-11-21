@@ -23,7 +23,6 @@
 
                                      ;; to remove:
                                      [com.datomic/datomic-free "0.9.5697"]
-                                     [org.clojure/data.json "0.2.6"]
                                      [com.walmartlabs/lacinia "0.30.0"]]
                       :main         server.core}
              :client {:dependencies [[org.clojure/clojurescript "1.10.439"]
