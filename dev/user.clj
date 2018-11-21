@@ -12,23 +12,24 @@
       (assoc :elide-asserts false
              :fn-invoke-direct false
              :static-fns false
-             :output-dir "target/public/js/out"
              :optimizations :none)
       (update :closure-defines merge '{goog.asserts.ENABLE_ASSERTS true
                                        goog.DEBUG                  true})))
 
 
 (def dev-build
-  {:id           "dev"
+  {:id           :dev
    :source-paths ["src" "dev"]
    :figwheel     '{:on-jsload cljs.user/on-jsload}
    :compiler     (assoc compiler
                    :main 'cljs.user
+                   :output-dir "target/public/js/out"
+                   :asset-path "/js/out"
                    :preloads '[devtools.preload
                                fulcro.inspect.preload])})
 
 (def card-build
-  {:id           "card"
+  {:id           :card
    :source-paths ["src" "test" "dev"]
    :figwheel     {:devcards true}
    :compiler     (assoc compiler
@@ -37,18 +38,18 @@
                                fulcro.client.cards]
                    :main 'client.cards
                    :source-map-timestamp true
-                   :asset-path "/static/cards"
+                   :asset-path "/js/cards"
                    :output-dir "target/public/js/cards"
                    :output-to "target/public/js/cards.js")})
 
 (defn start
   []
-  (time
-    (do (sh/sh "yarn" "install")
-        (sh/sh "yarn" "webpack" "--mode=development")
-        (f/start-figwheel! {:builds          [card-build
-                                              dev-build]
-                            :builds-to-start ["dev" "card"]}))))
+  (let [builds [card-build dev-build]]
+    (time
+      (do (sh/sh "yarn" "install")
+          (sh/sh "yarn" "webpack" "--mode=development")
+          (f/start-figwheel! {:builds          builds
+                              :builds-to-start (mapv :id builds)})))))
 
 (defn cljs-repl
   []
