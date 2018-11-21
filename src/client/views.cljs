@@ -24,7 +24,8 @@
   [a/Paper
    [a/TextField {:on-change #(on-text (-> % .-target .-value))
                  :value     (or text "")}]
-   [a/Button {:on-click #(on-add text)} "+"]])
+   [a/Button {:disabled (string/blank? text)
+              :on-click #(on-add text)} "+"]])
 
 (defn page-todo
   [{:keys [app/todos todo.new/text]}]
@@ -254,8 +255,7 @@
         (for [[k _] pages]
           [a/MenuItem {:key   (name k)
                        :value (name k)} (name k)])]
-       [a/Typography {:style   {:flexGrow 1}
-                      :color   :inherit} (name page)]
+       [a/Typography {:style {:flexGrow 1}} (name page)]
        [ui-auth {:on-logout             #(rf/dispatch [:app/logout])
                  :on-two-factor-text    #(rf/dispatch-sync [:user/two-factor %])
                  :on-username-text      #(rf/dispatch-sync [:user/username %])

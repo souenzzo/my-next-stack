@@ -108,7 +108,6 @@
 
 (defn api
   [{:keys [body]}]
-  (prn [:in body])
   (let [body' (parser {:state          state
                        :telegram/token (System/getenv "TELEGRAM_TOKEN")
                        :conn           conn} body)]
