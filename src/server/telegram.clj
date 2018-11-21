@@ -15,7 +15,7 @@
     (encode (str s)))
   String
   (encode [s]
-    (URLEncoder/encode s StandardCharsets/UTF_8))
+    (URLEncoder/encode s (str StandardCharsets/UTF_8)))
   Keyword
   (encode [s]
     (encode (name s))))
