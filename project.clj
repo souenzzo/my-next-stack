@@ -18,6 +18,9 @@
                                      [org.slf4j/slf4j-nop "1.8.0-beta2"]
 
 
+                                     ;; conflicts
+                                     [com.google.guava/guava "27.0-jre"]
+
                                      ;; to remove:
                                      [com.datomic/datomic-free "0.9.5697"]
                                      [org.clojure/data.json "0.2.6"]
@@ -26,6 +29,9 @@
              :client {:dependencies [[org.clojure/clojurescript "1.10.439"]
                                      [com.cognitect/transit-cljs "0.8.256"]
                                      [re-frame/re-frame "0.10.6"]
+                                     [fulcrologic/fulcro "2.6.15" :exclusions [cljsjs/react
+                                                                               cljsjs/react-dom
+                                                                               cljsjs/react-dom-server]]
                                      [reagent/reagent "0.8.1" :exclusions [cljsjs/react
                                                                            cljsjs/react-dom
                                                                            cljsjs/react-dom-server
@@ -37,6 +43,8 @@
                       :resource-paths ["target"]
                       :dependencies   [[figwheel-sidecar/figwheel-sidecar "0.5.17"]
                                        [cider/piggieback "0.3.10"]
+                                       [binaryage/devtools "0.9.10"]
+                                       [fulcrologic/fulcro-inspect "2.2.4"]
                                        [devcards/devcards "0.2.6" :exclusions [cljsjs/react
                                                                                cljsjs/react-dom
                                                                                cljsjs/marked
