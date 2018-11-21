@@ -255,7 +255,6 @@
           [a/MenuItem {:key   (name k)
                        :value (name k)} (name k)])]
        [a/Typography {:style   {:flexGrow 1}
-                      :variant :title
                       :color   :inherit} (name page)]
        [ui-auth {:on-logout             #(rf/dispatch [:app/logout])
                  :on-two-factor-text    #(rf/dispatch-sync [:user/two-factor %])

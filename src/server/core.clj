@@ -109,11 +109,11 @@
 (defn api
   [{:keys [body]}]
   (prn [:in body])
-  (let [body (parser {:state          state
-                      :telegram/token (System/getenv "TELEGRAM_TOKEN")
-                      :conn           conn} body)]
-    (prn [:out body])
-    {:body   body
+  (let [body' (parser {:state          state
+                       :telegram/token (System/getenv "TELEGRAM_TOKEN")
+                       :conn           conn} body)]
+    (prn [:in body :out body'])
+    {:body   body'
      :status 200}))
 
 (def read-writer
