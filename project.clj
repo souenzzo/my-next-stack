@@ -30,14 +30,15 @@
              :test   {:source-paths ["src" "test"]
                       :dependencies [[midje/midje "1.9.4"]
                                      [org.clojure/test.check "0.10.0-alpha3"]]}
-             :webdev {:source-paths ["src" "dev"]
-                      :dependencies [[figwheel-sidecar/figwheel-sidecar "0.5.17"]
-                                     [cider/piggieback "0.3.10"]
-                                     [devcards/devcards "0.2.6" :exclusions [cljsjs/react
-                                                                             cljsjs/react-dom
-                                                                             cljsjs/marked
-                                                                             cljsjs/create-react-class]]]
-                      :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
-                      :main         user}
+             :webdev {:source-paths   ["src" "dev"]
+                      :resource-paths ["target"]
+                      :dependencies   [[figwheel-sidecar/figwheel-sidecar "0.5.17"]
+                                       [cider/piggieback "0.3.10"]
+                                       [devcards/devcards "0.2.6" :exclusions [cljsjs/react
+                                                                               cljsjs/react-dom
+                                                                               cljsjs/marked
+                                                                               cljsjs/create-react-class]]]
+                      :repl-options   {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
+                      :main           user}
              :dev    {:source-paths ["src" "dev"]
                       :main         user}})

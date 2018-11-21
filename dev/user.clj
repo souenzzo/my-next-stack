@@ -1,33 +1,22 @@
 (ns user
   (:require [server.core :as server]
             [figwheel-sidecar.repl-api :as f]
-            [clojure.java.shell :as sh]))
+            [clojure.java.shell :as sh]
+            [clojure.java.io :as io]
+            [clojure.edn :as edn]))
 
 (def compiler
-  '{:infer-externs   true
-    :npm-deps        false
-    :foreign-libs    [{:file           "dist/index_bundle.js"
-                       :provides       ["create-react-class"
-                                        "react"
-                                        "material-ui.icons"
-                                        "cljsjs.react"
-                                        "cljsjs.marked"
-                                        "cljsjs.react.dom"
-                                        "material-ui.core"
-                                        "material-ui.core.styles"
-                                        "react-dom"]
-                       :global-exports {react                   React
-                                        cljsjs.react            React
-                                        react-dom               ReactDOM
-                                        cljsjs.react.dom        ReactDOM
-                                        create-react-class      CreateReactClass
-                                        cljsjs.marked           marked
-                                        material-ui.core        MaterialUI
-                                        material-ui.icons       Icons
-                                        material-ui.core.styles MaterialStyles}}]
-    :closure-defines {goog.asserts.ENABLE_ASSERTS true
-                      goog.DEBUG                  true}
-    :elide-asserts   false})
+  (-> (io/resource "build.edn")
+      slurp
+      edn/read-string
+      (assoc :elide-asserts false
+             :fn-invoke-direct false
+             :static-fns false
+             :output-dir "target/public/js/out"
+             :optimizations :none)
+      (update :closure-defines merge '{goog.asserts.ENABLE_ASSERTS true
+                                       goog.DEBUG                  true})))
+
 
 (def dev-build
   {:id           "dev"
@@ -35,26 +24,28 @@
    :figwheel     '{:on-jsload cljs.user/on-jsload}
    :compiler     (assoc compiler
                    :main 'cljs.user
-                   :asset-path "/js/out"
-                   :output-dir "resources/public/js/out"
-                   :output-to "resources/public/js/app.js")})
+                   :preloads '[devtools.preload
+                               fulcro.inspect.preload])})
 
 (def card-build
   {:id           "card"
-   :source-paths ["src" "dev"]
+   :source-paths ["src" "test" "dev"]
    :figwheel     {:devcards true}
    :compiler     (assoc compiler
+                   :preloads '[devcards.core
+                               devtools.preload
+                               fulcro.client.cards]
                    :main 'client.cards
                    :source-map-timestamp true
-                   :asset-path "/js/cards"
-                   :output-dir "resources/public/js/cards"
-                   :output-to "resources/public/js/cards.js")})
+                   :asset-path "/static/cards"
+                   :output-dir "target/public/js/cards"
+                   :output-to "target/public/js/cards.js")})
 
 (defn start
   []
   (time
     (do (sh/sh "yarn" "install")
-        (sh/sh "yarn" "webpack")
+        (sh/sh "yarn" "webpack" "--mode=development")
         (f/start-figwheel! {:builds          [card-build
                                               dev-build]
                             :builds-to-start ["dev" "card"]}))))

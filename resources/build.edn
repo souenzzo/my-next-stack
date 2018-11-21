@@ -1,19 +1,33 @@
-{:main          client.core
- :output-to     "resources/public/js/app.js"
- :infer-externs true
- :npm-deps      false
- :foreign-libs  [{:file           "dist/index_bundle.js"
-                  :provides       ["create-react-class"
-                                   "react"
-                                   "material-ui.core"
-                                   "material-ui.icons"
-                                   "cljsjs.marked"
-                                   "material-ui.core.styles"
-                                   "react-dom"]
-                  :global-exports {react                   React
-                                   react-dom               ReactDOM
-                                   create-react-class      CreateReactClass
-                                   cljsjs.marked           marked
-                                   material-ui.core        MaterialUI
-                                   material-ui.icons       Icons
-                                   material-ui.core.styles MaterialStyles}}]}
+{:main             client.core
+ :output-to        "resources/public/js/app.js"
+ :optimizations    :advanced
+
+ :foreign-libs     [{:file           "dist/index_bundle.js"
+                     :provides       ["create-react-class"
+                                      "react"
+                                      "material-ui.icons"
+                                      "cljsjs.react"
+                                      "cljsjs.marked"
+                                      "cljsjs.react.dom"
+                                      "material-ui.core"
+                                      "material-ui.core.styles"
+                                      "react-dom"]
+                     :global-exports {react                   React
+                                      cljsjs.react            React
+                                      react-dom               ReactDOM
+                                      cljsjs.react.dom        ReactDOM
+                                      create-react-class      CreateReactClass
+                                      cljsjs.marked           marked
+                                      material-ui.core        MaterialUI
+                                      material-ui.icons       Icons
+                                      material-ui.core.styles MaterialStyles}}]
+
+ :closure-defines  {goog.asserts.ENABLE_ASSERTS false
+                    goog.DEBUG                  false}
+ :npm-deps         false
+ ;; to debug
+ ;; :pseudo-names  true
+ :infer-externs    true
+ :elide-asserts    true
+ :static-fns       true
+ :fn-invoke-direct true}
