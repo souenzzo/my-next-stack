@@ -10,14 +10,17 @@
                                      [com.wsscode/pathom "2.2.0-RC4"]
                                      [io.pedestal/pedestal.jetty "0.5.4"]
                                      [io.pedestal/pedestal.service "0.5.4"]
-                                     [org.clojure/data.json "0.2.6"]
+                                     [cheshire/cheshire "5.8.1"]
                                      [walkable "1.1.0-SNAPSHOT"]
                                      [org.clojure/java.jdbc "0.7.8"]
                                      [org.postgresql/postgresql "42.2.5"]
                                      ;; ignore logging
                                      [org.slf4j/slf4j-nop "1.8.0-beta2"]
 
+
+                                     ;; to remove:
                                      [com.datomic/datomic-free "0.9.5697"]
+                                     [org.clojure/data.json "0.2.6"]
                                      [com.walmartlabs/lacinia "0.30.0"]]
                       :main         server.core}
              :client {:dependencies [[org.clojure/clojurescript "1.10.439"]
