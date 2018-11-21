@@ -23,13 +23,13 @@
   [{:keys [text on-text on-add]}]
   [a/Paper
    [a/TextField {:on-change #(on-text (-> % .-target .-value))
-                 :value     text}]
+                 :value     (or text "")}]
    [a/Button {:on-click #(on-add text)} "+"]])
 
 (defn page-todo
   [{:keys [app/todos todo.new/text]}]
   [a/Paper
-   [ui-new-todo {:text    text
+   [ui-new-todo {:text    (or text "")
                  :on-add  #(rf/dispatch [:add-todo text])
                  :on-text #(rf/dispatch-sync [:todo.new/text %])}]
    [a/Paper
@@ -224,7 +224,7 @@
                                         :on-click #(on-login username two-factor)
                                         :color    :secondary} "Confirm"]]
     :else [a/Paper
-           [a/Input {:value     username
+           [a/Input {:value     (or username "")
                      :on-change #(on-username-text (-> % .-target .-value))}]
            [a/Button {:variant  :contained
                       :disabled (string/blank? username)
