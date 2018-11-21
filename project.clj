@@ -7,7 +7,7 @@
   :profiles {:server {:dependencies [[org.clojure/core.async "0.4.490"]
                                      [buddy/buddy-sign "3.0.0"]
                                      [com.cognitect/transit-clj "0.8.313"]
-                                     [com.wsscode/pathom "2.2.0-RC4"]
+                                     [com.wsscode/pathom "2.2.0-RC5"]
                                      [io.pedestal/pedestal.jetty "0.5.4"]
                                      [io.pedestal/pedestal.service "0.5.4"]
                                      [cheshire/cheshire "5.8.1"]
@@ -19,7 +19,7 @@
 
 
                                      ;; conflicts
-                                     [com.google.guava/guava "27.0-jre"]
+                                     [com.google.guava/guava "27.0.1-jre"]
 
                                      ;; to remove:
                                      [com.datomic/datomic-free "0.9.5697"]
