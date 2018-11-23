@@ -8,9 +8,14 @@
             [com.wsscode.pathom.core :as p]
             [datomic.api :as d]
             [io.pedestal.http :as http]
-            [server.telegram :as telegram])
+            [server.telegram :as telegram]
+            [io.pedestal.log :as log]
+            [ring.util.mime-type :as mime]
+            [ring.middleware.resource :as resource]
+            [io.pedestal.http.route :as route])
   (:import (org.eclipse.jetty.server.handler.gzip GzipHandler)
-           (org.eclipse.jetty.servlet ServletContextHandler)))
+           (org.eclipse.jetty.servlet ServletContextHandler)
+           (java.io File)))
 
 (defn ^:dynamic rand-int-in
   [min max]
@@ -65,16 +70,21 @@
   (pc/resolver-factory resolver-fn indexes))
 
 (defresolver `app-counter
-             {::pc/output [:app/counter]}
+             {::pc/output [:n]}
              (fn [{:keys [state]} _]
-               {:app/counter (:counter @state)}))
+               {:n (:counter @state)}))
+
+(defresolver `app-data
+             {::pc/output [{:app/data [:n]}]}
+             (fn [{:keys [state]} _]
+               {:app/data {:n (:counter @state)}}))
 
 (defresolver `app-todos
              {::pc/output [{:app/todos [:db/id
                                         :todo/done?
                                         :todo/text]}]}
              (fn [{:keys [conn query]} args]
-               {:app/todos (d/q '[:find [(pull ?e pattern) ...]
+               {:app/todos (d/q '[:find [(pull ?e [*]) ...]
                                   :in $ pattern
                                   :where
                                   [?e :todo/text]]
@@ -106,51 +116,123 @@
 
 (defonce state (atom nil))
 
-(defn api
-  [{:keys [body]}]
-  (let [body' (parser {:state          state
-                       :telegram/token (System/getenv "TELEGRAM_TOKEN")
-                       :conn           conn} body)]
-    (prn [:in body :out body'])
-    {:body   body'
+
+(def verbose? true)
+
+(defn handler-parser
+  [{:keys [params env]}]
+  (let [result (parser env params)]
+    (log/info :query params :result result)
+    {:body   result
      :status 200}))
 
-(def read-writer
-  {:name  ::read-writer
-   :enter (fn [{{{:strs [content-type]
-                  :or   {content-type "application/edn"}} :headers} :request
-                :as                                                 ctx}]
-            (let [reader (cond (string/starts-with? content-type "application/transit+json") (fn [in]
-                                                                                               (transit/read (transit/reader in :json)))
-                               :else (comp edn/read-string slurp))]
-              (update-in ctx [:request :body] reader)))
-   :leave (fn [{{{:strs [accept]
-                  :or   {accept "application/edn"}} :headers} :request
-                :as                                           ctx}]
-            (let [writer (case accept
-                           ("application/transit+json" "*/*") (fn [data]
-                                                                (fn [out]
-                                                                  (try
-                                                                    (transit/write (transit/writer out :json) data)
-                                                                    (catch Throwable e
-                                                                      (prn e)))))
-                           pr-str)]
-              (-> ctx
-                  (assoc-in [:response :headers "Content-Type"] (case accept "*/*" "application/transit+json" accept))
-                  (update-in [:response :body] writer))))})
+(defn pr-transit
+  [type body]
+  (fn pr-transit [out]
+    (try
+      (let [writer (transit/writer out type)]
+        (transit/write writer body))
+      (catch Throwable e
+        (log/error :transit-writer e)))))
 
-(def routes
-  `#{["/api" :post [read-writer api]]})
+(defn transit-read
+  [type in]
+  (-> (transit/reader in type)
+      (transit/read)))
+
+(defn transit-type
+  ([x] (transit-type x false))
+  ([x verbose?]
+   (when (and (string? x) (or (string/starts-with? x "application/transit")
+                              (= "*/*" x)))
+     (cond
+       (string/ends-with? (str x) "+msgpack") :msgpack
+       verbose? :json-verbose
+       :else :json))))
+
+(def type->conten-type
+  {:json         "application/transit+json"
+   :json-verbose "application/transit+json"
+   :msgpack      "application/transit+msgpack"
+   :edn          "application/edn"})
+
+(def ->edn
+  {:name  ::->edn
+   :enter (fn [{{{:strs [content-type]} :headers} :request
+                {:keys [body]}                    :request
+                :as                               ctx}]
+            (if-not body
+              ctx
+              (let [type (transit-type content-type)
+                    params (if type
+                             (transit-read type body)
+                             (edn/read-string (slurp body)))]
+                (assoc-in ctx [:request :params] params))))
+   :leave (fn [{{{:strs [accept]} :headers} :request
+                {:keys [body]}              :response
+                :as                         ctx}]
+            (let [type (transit-type accept verbose?)
+                  response-body (if type
+                                  (pr-transit type body)
+                                  (pr-str body))]
+              (-> ctx
+                  (assoc-in [:response :body] response-body)
+                  (assoc-in [:response :headers "Content-Type"] (type->conten-type (or type :edn))))))})
+
+(defn handler-resources
+  [{:keys [path-info uri]}]
+  (log/debug :path-info path-info :uri uri)
+  (resource/resource-request
+    {:request-method :get
+     :path-info      (if (= path-info "/")
+                       "/index.html"
+                       path-info)
+     :uri            (if (= uri "/")
+                       "/index.html"
+                       uri)}
+    "/public"))
+
+(defn file?
+  [x]
+  (instance? File x))
+
+(def +mime-types
+  {:name  ::+mime-types
+   :leave (fn [{{:keys [body]} :response
+                :as            ctx}]
+            (if (file? body)
+              (let [filename (.getName ^File body)
+                    path [:response :headers "Content-Type"]]
+                (cond-> ctx
+                        (string? filename) (assoc-in path (mime/ext-mime-type filename))))
+              ctx))})
+
+(defn +env
+  [env]
+  {:name  ::+env
+   :enter (fn [ctx] (assoc-in ctx [:request :env] env))})
+
+(defn routes
+  [env]
+  `#{["/api" :post [->edn ~(+env env) handler-parser]]
+     ["/js/*path" :get [+mime-types ~(+env env) handler-resources]]
+     ["/" :get [+mime-types ~(+env env) handler-resources] :route-name ::home]})
+
 
 (defn context-configurator
+  "Habilitando gzip nas respostas"
   [^ServletContextHandler context]
   (let [gzip-handler (GzipHandler.)]
     (.setExcludedAgentPatterns gzip-handler (make-array String 0))
     (.setGzipHandler context gzip-handler))
   context)
 
+
+
 (def service
-  (-> {::http/routes            routes
+  (-> {::http/routes            #(route/expand-routes (routes {:state          state
+                                                               :telegram/token (System/getenv "TELEGRAM_TOKEN")
+                                                               :conn           conn}))
        ::http/port              8080
        ::http/join?             false
        ::http/type              :jetty

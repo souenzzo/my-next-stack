@@ -24,6 +24,7 @@
    :compiler     (assoc compiler
                    :main 'cljs.user
                    :output-dir "target/public/js/out"
+                   :output-to "target/public/js/app.js"
                    :asset-path "/js/out"
                    :preloads '[devtools.preload
                                fulcro.inspect.preload])})
@@ -53,7 +54,7 @@
 
 (defn cljs-repl
   []
-  (f/cljs-repl "card"))
+  (f/cljs-repl :dev))
 
 (defn stop
   []
