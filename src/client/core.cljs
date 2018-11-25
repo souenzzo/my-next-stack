@@ -44,16 +44,12 @@
   [this]
   (df/load this :app/todos Todo))
 
-
 (defonce client (atom (fc/new-fulcro-client
                         :started-callback started-callback)))
-
 
 (defn render
   [target]
   (swap! client fc/mount Root target))
-
-
 
 (defn ^:export main
   [target]
