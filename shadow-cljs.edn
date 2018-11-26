@@ -18,7 +18,6 @@
                   :output-dir "target/public/js/cards"
                   :asset-path "/js/cards"
                   :devtools   {:preloads           [cljs.user
-                                                    devcards.core
                                                     devtools.preload
                                                     fulcro.client.cards]
                                :http-root          "target/public"

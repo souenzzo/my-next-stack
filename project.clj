@@ -33,6 +33,7 @@
                        :main         server.core}
              :client  {:dependencies [[org.clojure/clojurescript "1.10.439"]
                                       [thheller/shadow-cljs "2.7.3"]
+                                      [garden/garden "1.3.6"]
                                       [com.cognitect/transit-cljs "0.8.256"]
                                       [re-frame/re-frame "0.10.6"]
                                       [fulcrologic/fulcro "2.6.15" :exclusions [cljsjs/react
@@ -45,17 +46,10 @@
              :test    {:source-paths ["src" "test"]
                        :dependencies [[midje/midje "1.9.4"]
                                       [org.clojure/test.check "0.10.0-alpha3"]]}
-             :webdev  {:source-paths   ["src" "dev"]
+             :webdev  {:source-paths   ["src" "webdev"]
                        :resource-paths ["target"]
-                       :dependencies   [[figwheel-sidecar/figwheel-sidecar "0.5.17"]
-                                        [cider/piggieback "0.3.10"]
-                                        [binaryage/devtools "0.9.10"]
-                                        [fulcrologic/fulcro-inspect "2.2.4"]
-                                        [devcards/devcards "0.2.6" :exclusions [cljsjs/react
-                                                                                cljsjs/react-dom
-                                                                                cljsjs/marked
-                                                                                cljsjs/create-react-class]]]
-                       :repl-options   {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
+                       :dependencies   [[binaryage/devtools "0.9.10"]
+                                        [fulcrologic/fulcro-inspect "2.2.4"]]
                        :main           user}
              :dev     {:source-paths ["src" "dev"]
                        :main         user}})

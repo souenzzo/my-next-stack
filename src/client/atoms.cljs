@@ -1,7 +1,7 @@
 (ns client.atoms
   (:refer-clojure :exclude [List])
-  (:require [material-ui.core :as m]
-            [material-ui.icons :as i]
+  (:require ["@material-ui/core" :as m]
+            ["@material-ui/icons" :as i]
             [reagent.core :as r]))
 
 (def MuiThemeProvider (r/adapt-react-class m/MuiThemeProvider))
