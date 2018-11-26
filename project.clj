@@ -34,14 +34,9 @@
              :client  {:dependencies [[org.clojure/clojurescript "1.10.439"]
                                       [thheller/shadow-cljs "2.7.3"]
                                       [com.cognitect/transit-cljs "0.8.256"]
-                                      [re-frame/re-frame "0.10.6"]
                                       [fulcrologic/fulcro "2.6.15" :exclusions [cljsjs/react
                                                                                 cljsjs/react-dom
-                                                                                cljsjs/react-dom-server]]
-                                      [reagent/reagent "0.8.1" :exclusions [cljsjs/react
-                                                                            cljsjs/react-dom
-                                                                            cljsjs/react-dom-server
-                                                                            cljsjs/create-react-class]]]}
+                                                                                cljsjs/react-dom-server]]]}
              :test    {:source-paths ["src" "test"]
                        :dependencies [[midje/midje "1.9.4"]
                                       [org.clojure/test.check "0.10.0-alpha3"]]}

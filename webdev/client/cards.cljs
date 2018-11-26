@@ -1,7 +1,6 @@
 (ns client.cards
   (:require [client.views :as v]
-            #_[devcards.core :as dc :include-macros true]
-            [reagent.core :as r]))
+            #_[devcards.core :as dc :include-macros true]))
 
 #_(dc/defcard todo-item
     (dc/reagent (fn [state owner]

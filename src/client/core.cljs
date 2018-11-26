@@ -2,9 +2,9 @@
   (:require [fulcro.client :as fc]
             [fulcro.client.primitives :as prim :refer [defsc]]
             [fulcro.client.dom :as dom]
+            [fulcro.ui.bootstrap3 :as bs3]
             [fulcro.client.mutations :refer-macros [defmutation]]
-            [fulcro.client.data-fetch :as df]
-            [client.atoms :as a]))
+            [fulcro.client.data-fetch :as df]))
 
 (defmutation app.counter/inc
   [params]
@@ -40,8 +40,8 @@
     {:stype {:background :red}}
 
     (map ui-todo todos)
-    (a/Button {:onClick #(df/load this :app/todos Todo)}
-              "load")))
+    (bs3/button {:onClick #(df/load this :app/todos Todo)}
+                "load")))
 
 (defn started-callback
   [this]
