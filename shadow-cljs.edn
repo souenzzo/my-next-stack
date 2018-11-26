@@ -1,25 +1,10 @@
 {:lein   {:profile "server,client,webdev"}
  :nrepl  {:port 5000}
- :builds {:main  {:target     :browser
-                  :output-dir "target/public/js/out"
-                  :asset-path "/js/out"
-
-                  :modules    {:main {:entries [client.core]}}
-
-                  :devtools   {:after-load         cljs.user/on-jsload
-                               :preloads           [cljs.user
-                                                    devtools.preload
-                                                    fulcro.inspect.preload]
-                               :http-root          "target/public"
-                               :http-resource-root "public"
-                               :http-port          3449}}
-
-          :cards {:target     :browser
-                  :output-dir "target/public/js/cards"
-                  :asset-path "/js/cards"
-                  :devtools   {:preloads           [cljs.user
-                                                    devtools.preload]
-                               :http-root          "target/public"
-                               :http-resource-root "public"
-                               :http-port          3500}
-                  :modules    {:main {:entries [client.cards]}}}}}
+ :builds {:main {:target     :browser
+                 :output-dir "target/public/js/out"
+                 :asset-path "/js/out"
+                 :modules    {:main {:entries [client.core]}}
+                 :devtools   {:after-load cljs.user/on-jsload
+                              :preloads   [cljs.user
+                                           devtools.preload
+                                           fulcro.inspect.preload]}}}}

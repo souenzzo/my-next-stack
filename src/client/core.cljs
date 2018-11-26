@@ -3,7 +3,8 @@
             [fulcro.client.primitives :as prim :refer [defsc]]
             [fulcro.client.dom :as dom]
             [fulcro.client.mutations :refer-macros [defmutation]]
-            [fulcro.client.data-fetch :as df]))
+            [fulcro.client.data-fetch :as df]
+            [client.atoms :as a]))
 
 (defmutation app.counter/inc
   [params]
@@ -36,9 +37,11 @@
   {:query         [{:app/todos (prim/get-query Todo)}]
    :initial-state (fn [_] {:app/todos []})}
   (dom/div
+    {:stype {:background :red}}
+
     (map ui-todo todos)
-    (dom/button {:onClick #(df/load this :app/todos Todo)}
-                "load")))
+    (a/Button {:onClick #(df/load this :app/todos Todo)}
+              "load")))
 
 (defn started-callback
   [this]

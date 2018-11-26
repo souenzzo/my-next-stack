@@ -1,5 +1,8 @@
 #!/usr/bin/env make
 
+clean:
+	rm -rf target .shadow-cljs .nrepl-port out 
+
 resources/public/js/app.js: dist/index_bundle.js
 	lein with-profile +client run -m cljs.main -co resources/build.edn -O advanced -v -c
 
