@@ -4,7 +4,7 @@
                  :output-dir "target/public/js/out"
                  :asset-path "/js/out"
                  :modules    {:main {:entries [client.core]}}
-                 :devtools   {:after-load cljs.user/on-jsload
-                              :preloads   [cljs.user
+                 :devtools   {:after-load client.user/on-jsload
+                              :preloads   [client.user
                                            devtools.preload
                                            fulcro.inspect.preload]}}}}

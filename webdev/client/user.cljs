@@ -1,4 +1,4 @@
-(ns cljs.user
+(ns client.user
   (:require [client.core :as client]))
 
 (defn ^:dev/after-load on-jsload
