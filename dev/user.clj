@@ -13,7 +13,8 @@
     (do
       (prn [@shadow-server])
       (sh/sh "yarn" "install")
-      (shadow/watch :main))))
+      (shadow/watch :main)
+      (server/-main))))
 
 (defn restart
   []

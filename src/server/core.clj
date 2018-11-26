@@ -236,6 +236,7 @@
        ::http/port              8080
        ::http/join?             false
        ::http/type              :jetty
+       ::http/host              "0.0.0.0"
        ::http/cred              true
        ::http/allowed-origins   {:creds           true
                                  :allowed-origins (constantly true)}
