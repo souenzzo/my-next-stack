@@ -18,8 +18,7 @@
                   :output-dir "target/public/js/cards"
                   :asset-path "/js/cards"
                   :devtools   {:preloads           [cljs.user
-                                                    devtools.preload
-                                                    fulcro.client.cards]
+                                                    devtools.preload]
                                :http-root          "target/public"
                                :http-resource-root "public"
                                :http-port          3500}

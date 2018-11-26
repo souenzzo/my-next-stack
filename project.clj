@@ -33,7 +33,6 @@
                        :main         server.core}
              :client  {:dependencies [[org.clojure/clojurescript "1.10.439"]
                                       [thheller/shadow-cljs "2.7.3"]
-                                      [garden/garden "1.3.6"]
                                       [com.cognitect/transit-cljs "0.8.256"]
                                       [re-frame/re-frame "0.10.6"]
                                       [fulcrologic/fulcro "2.6.15" :exclusions [cljsjs/react
