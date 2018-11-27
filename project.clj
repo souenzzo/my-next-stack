@@ -1,9 +1,10 @@
 (defproject my-next-stack "0.1.0-SNAPSHOT"
-  :dependencies [[org.clojure/clojure "1.10.0-beta8"]
+  :dependencies [[org.clojure/clojure "1.10.0-RC2"]
                  [org.clojure/core.specs.alpha "0.2.36"]]
   :source-paths ["src"]
   :resource-paths ["resources"]
   :clean-targets ["target" "dist"]
+  :aliases {"shadow-cljs" ["with-profile" "+server,+client,+dev,+webdev" "run" "-m" "user"]}
   :profiles {:uberjar {:main       server.core
                        :aot        :all
                        #_#_:jar-exclusions [#"public/js/test" #"public/js/workspaces" #"public/workspaces.html"]
