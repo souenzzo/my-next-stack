@@ -1,0 +1,16 @@
+{:deps   {:aliases [:cljs :dev]}
+ :builds {:pwa        {:target            :browser
+                       :output-dir        "target/public/_static/pwa"
+                       :asset-path        "/_static/pwa"
+                       :modules           {:main {:entries [my-next-stack.pwa]}}
+                       :module-hash-names true
+                       :devtools          {:preloads   [my-next-stack.user
+                                                        devtools.preload
+                                                        fulcro.inspect.preload]
+                                           :after-load my-next-stack.user/after-load}}
+          :workspaces {:target     nubank.workspaces.shadow-cljs.target
+                       :ns-regexp  "-(test|cards)$"
+                       :output-dir "target/public/_static/workspaces"
+                       :asset-path "/_static/workspaces"
+                       :devtools   {:preloads [devtools.preload
+                                               fulcro.inspect.preload]}}}}
