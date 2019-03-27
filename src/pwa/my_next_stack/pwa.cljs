@@ -8,8 +8,8 @@
             [fulcro.client.dom :as dom]
             [fulcro.client.mutations :as fm]))
 
-(fm/defmutation app/login
-  [{:keys [username]}]
+(fm/defmutation app.user/login
+  [{:app.user/keys [username]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
                          (-> st))))
@@ -32,7 +32,7 @@
                 :flexDirection  "column"
                 :justifyContent "center"}
      :onSubmit (fn [e] (.preventDefault e)
-                 (fp/transact! this `[(app/login ~{:username username})]))}
+                 (fp/transact! this `[(app/login ~{:app.user/username username})]))}
     (dom/input {:value    username
                 :onChange #(fm/set-value! this :ui/username (-> % .-target .-value))})))
 

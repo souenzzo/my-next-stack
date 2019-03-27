@@ -56,13 +56,20 @@
               :else (let [type (transit-type accept verbose-transit?)
                           response-body (if type
                                           (pr-transit type body)
-                                          (pr-str body))]
+                                          (pr-str body))
+                          content-type (type->conten-type (or type :edn))]
                       (-> ctx
                           (assoc-in [:response :body] response-body)
-                          (assoc-in [:response :headers "Content-Type"] (type->conten-type (or type :edn)))))))})
+                          (assoc-in [:response :headers "Content-Type"] content-type)))))})
 
 
 
+(pc/defmutation login [app {:app.user/keys [username]}]
+  {::pc/sym    `app.user/login
+   ::pc/output [:app.user/username]
+   ::pc/params [:app.user/username]}
+  (let []
+    {:app.user/username username}))
 
 (def parser
   (p/parallel-parser
@@ -100,9 +107,10 @@
    :enter (fn [{{:keys [edn-params transit-params]} :request
                 :keys                               [request]
                 :as                                 context}]
-            (let [query (or edn-params transit-params)]
+            (let [query (or edn-params transit-params)
+                  result (parser request query)]
               (async/go
-                (assoc context :response {:body   (async/<! (parser request query))
+                (assoc context :response {:body   (async/<! result)
                                           :status 200}))))})
 
 (def routes
