@@ -111,7 +111,6 @@
 
 (defn index
   [{::csrf/keys [anti-forgery-token] :keys [db]}]
-  (prn db)
   {:body   (dom/html
              {:lang "pt-BR"}
              (dom/head
