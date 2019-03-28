@@ -8,14 +8,24 @@
             [fulcro.client.dom :as dom]
             [fulcro.client.mutations :as fm]))
 
+(fp/defsc Friend [this props]
+  {:query [:app.user/username]
+   :ident [:app.user/username :app.user/username]})
+
+(fp/defsc Friends [this prosp]
+  {:query [{:app.user/friends (fp/get-query Friend)}]
+   :ident (fn [] [::friends ::friends])})
+
 (fm/defmutation app.user/login
   [{:app.user/keys [username]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
-                         (-> st))))
+                         (-> st
+                             (fr/set-route* ::root-router [::loading ::loading])))))
   (remote [{:keys [ast state]}]
+          true
           (-> ast
-              #_(fm/returning state Friends))))
+              (fm/returning state Friends))))
 
 (fp/defsc Login [this {:ui/keys [username]
                        ::keys   [page id]
@@ -32,7 +42,7 @@
                 :flexDirection  "column"
                 :justifyContent "center"}
      :onSubmit (fn [e] (.preventDefault e)
-                 (fp/transact! this `[(app/login ~{:app.user/username username})]))}
+                 (fp/transact! this `[(app.user/login ~{:app.user/username username})]))}
     (dom/input {:value    username
                 :onChange #(fm/set-value! this :ui/username (-> % .-target .-value))})))
 

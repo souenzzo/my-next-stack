@@ -1,6 +1,7 @@
 (ns my-next-stack.core
   (:require [io.pedestal.http :as http]
             [io.pedestal.http.route :as route]
+            [clojure.java.jdbc :as j]
             [io.pedestal.http.csrf :as csrf]
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]
@@ -9,7 +10,9 @@
             [io.pedestal.log :as log]
             [clojure.core.async :as async]
             [cognitect.transit :as transit]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [io.pedestal.interceptor :as interceptor]
+            [clojure.java.io :as io])
   (:import (org.eclipse.jetty.server.handler.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler)))
 
@@ -63,13 +66,38 @@
                           (assoc-in [:response :headers "Content-Type"] content-type)))))})
 
 
+(pc/defresolver username-by-id [{:keys [db]} {:app.user/keys [id]}]
+  {::pc/input  #{:app.user/id}
+   ::pc/output [:app.user/username]}
+  {:app.user/username (-> (j/query db ["SELECT username FROM account WHERE id = ?"
+                                       id])
+                          first
+                          :username)})
 
-(pc/defmutation login [app {:app.user/keys [username]}]
+(defn user-id-from-username
+  [db username]
+  (-> (j/query db ["SELECT id FROM account WHERE username = ?"
+                   username])
+      first
+      :id))
+
+(pc/defmutation login [{:keys [db]} {:app.user/keys [username]}]
   {::pc/sym    `app.user/login
    ::pc/output [:app.user/username]
-   ::pc/params [:app.user/username]}
-  (let []
-    {:app.user/username username}))
+   ::pc/params [:app.user/id]}
+  (let [id (j/with-db-transaction [db* db]
+             (or (user-id-from-username db* username)
+                 (do
+                   (j/insert! db* :account {:username username})
+                   (user-id-from-username db* username))))]
+    {:app.user/id id}))
+
+(pc/defresolver friends [{:keys [db]} {:app.user/keys [id]}]
+  {::pc/output [{:app.user/friends [:app.user/id]}]
+   ::pc/input  #{:app.user/id}}
+  (let [users (j/query db ["SELECT id FROM account"])]
+    {:app.user/friends (for [{:keys [id]} users]
+                         {:app.user/id id})}))
 
 (def parser
   (p/parallel-parser
@@ -78,11 +106,12 @@
                                             p/env-placeholder-reader]
                   ::p/placeholder-prefixes #{">"}}
      ::p/mutate  pc/mutate-async
-     ::p/plugins [(pc/connect-plugin {::pc/register []})
+     ::p/plugins [(pc/connect-plugin {::pc/register [login friends username-by-id]})
                   p/error-handler-plugin]}))
 
 (defn index
-  [{::csrf/keys [anti-forgery-token]}]
+  [{::csrf/keys [anti-forgery-token] :keys [db]}]
+  (prn db)
   {:body   (dom/html
              {:lang "pt-BR"}
              (dom/head
@@ -136,21 +165,47 @@
 
 (def service
   {:env                     :prod
-   ::http/type              :jetty
-   ::http/mime-types        mime/default-mime-types
+   :db                      {:dbtype   "postgresql"
+                             :dbname   "app"
+                             :host     "localhost"
+                             :user     "postgres"
+                             :password "postgres"}
    ::http/enable-csrf       {}
+   ::http/mime-types        mime/default-mime-types
    ::http/resource-path     "public"
    ::http/file-path         "target/public"
    ::http/container-options {:context-configurator context-configurator}
    ::http/secure-headers    {:content-security-policy-settings content-security-policy-settings}
    ::http/port              8080
+   ::http/routes            routes
    ::http/host              "0.0.0.0"
-   ::http/routes            routes})
+   ::http/type              :jetty})
+
+(defn add-env-interceptor
+  [env]
+  (->> (fn [interceptors]
+         (into [(interceptor/interceptor {:name  ::env-interceptor
+                                          :enter (fn [ctx]
+                                                   (update ctx :request #(into env %)))})]
+               interceptors))
+       (update env ::http/interceptors)))
+
+(defn install-schema!
+  [{:keys [dbname] :as db} schemas]
+  (j/execute! (assoc db :dbname "")
+              (format "DROP DATABASE IF EXISTS %s;" dbname)
+              {:transaction? false})
+  (j/execute! (assoc db :dbname "")
+              (format "CREATE DATABASE %s;" dbname)
+              {:transaction? false})
+  (doseq [schema schemas]
+    (j/execute! db schema)))
 
 (defonce http-state (atom nil))
 
 (defn dev-start
   []
+  (install-schema! (:db service) (mapv slurp [(io/resource "schema.sql")]))
   (swap! http-state (fn [st]
                       (when st
                         (http/stop st))
@@ -160,6 +215,7 @@
                           (update ::http/routes (fn [routes]
                                                   #(route/expand-routes routes)))
                           http/default-interceptors
+                          add-env-interceptor
                           http/dev-interceptors
                           http/create-server
                           http/start))))
@@ -171,5 +227,6 @@
                         (http/stop st))
                       (-> service
                           http/default-interceptors
+                          add-env-interceptor
                           http/create-server
                           http/start))))
