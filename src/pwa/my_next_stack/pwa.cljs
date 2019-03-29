@@ -8,24 +8,42 @@
             [fulcro.client.dom :as dom]
             [fulcro.client.mutations :as fm]))
 
-(fp/defsc Friend [this props]
-  {:query [:app.user/username]
-   :ident [:app.user/username :app.user/username]})
+(fp/defsc FriendLi [this {:keys [app.user/username]}]
+  {:query [:app.user/id
+           :app.user/username]
+   :ident [:app.user/id :app.user/id]}
+  (dom/li username))
 
-(fp/defsc Friends [this prosp]
-  {:query [{:app.user/friends (fp/get-query Friend)}]
-   :ident (fn [] [::friends ::friends])})
+(def ui-friend-li (fp/factory FriendLi {:keyfn :app.user/id}))
 
+(fp/defsc FriendsList [this {:keys [app.user/friends]}]
+  {:query         [{:app.user/friends (fp/get-query FriendLi)}]
+   :ident         (fn [] [::friends ::friends])
+   :initial-state (fn [_]
+                    {})}
+  (dom/ul
+    (map ui-friend-li friends)))
+
+
+(def ui-friends-list (fp/factory FriendsList))
 (fm/defmutation app.user/login
   [{:app.user/keys [username]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
                          (-> st
-                             (fr/set-route* ::root-router [::loading ::loading])))))
+                             (fr/set-route* ::root-router [::home ::home])))))
   (remote [{:keys [ast state]}]
           true
           (-> ast
-              (fm/returning state Friends))))
+              (fm/returning state FriendsList))))
+
+(fm/defmutation app.session/exit
+  [_]
+  (action [{:keys [state]}]
+          (swap! state (fn [st]
+                         (-> st
+                             (fr/set-route* ::root-router [::login ::login])))))
+  (remote [_] true))
 
 (fp/defsc Login [this {:ui/keys [username]
                        ::keys   [page id]
@@ -39,13 +57,26 @@
                      ::id   ::login})}
   (dom/form
     {:style    {:display        "flex"
-                :flexDirection  "column"
                 :justifyContent "center"}
      :onSubmit (fn [e] (.preventDefault e)
                  (fp/transact! this `[(app.user/login ~{:app.user/username username})]))}
     (dom/input {:value    username
                 :onChange #(fm/set-value! this :ui/username (-> % .-target .-value))})))
 
+(fp/defsc Home [this {::keys   [page id]
+                      :ui/keys [friends-list]}]
+  {:query         [::id
+                   ::page
+                   {:ui/friends-list (fp/get-query FriendsList)}]
+   :ident         (fn [] [page id])
+   :initial-state (fn [_]
+                    {::page           ::home
+                     ::id             ::home
+                     :ui/friends-list (fp/get-initial-state FriendsList _)})}
+  (fp/fragment
+    (dom/button {:onClick #(fp/transact! this `[(app.session/exit ~{})])}
+                "exit")
+    (ui-friends-list friends-list)))
 
 (fp/defsc Loading [this {::keys [page id]}]
   {:query         [::id
@@ -58,6 +89,7 @@
 
 (fr/defsc-router RootRouter [this {::keys [page id]}]
   {:router-targets {::loading Loading
+                    ::home    Home
                     ::login   Login}
    :ident          (fn [] [page id])
    :router-id      ::root-router

@@ -69,33 +69,62 @@
 (pc/defresolver username-by-id [{:keys [db]} {:app.user/keys [id]}]
   {::pc/input  #{:app.user/id}
    ::pc/output [:app.user/username]}
-  {:app.user/username (-> (j/query db ["SELECT username FROM account WHERE id = ?"
+  {:app.user/username (-> (j/query db ["SELECT username FROM app_user WHERE id = ?"
                                        id])
                           first
                           :username)})
 
 (defn user-id-from-username
   [db username]
-  (-> (j/query db ["SELECT id FROM account WHERE username = ?"
+  (-> (j/query db ["SELECT id FROM app_user WHERE username = ?"
                    username])
       first
       :id))
 
-(pc/defmutation login [{:keys [db]} {:app.user/keys [username]}]
+(defn session-id-from-csrf
+  [db csrf]
+  (-> (j/query db ["SELECT id FROM app_session WHERE csrf = ?"
+                   csrf])
+      first
+      :id))
+
+(pc/defmutation login [{::csrf/keys [anti-forgery-token]
+                        :keys       [db]} {:app.user/keys [username]}]
   {::pc/sym    `app.user/login
    ::pc/output [:app.user/username]
    ::pc/params [:app.user/id]}
   (let [id (j/with-db-transaction [db* db]
-             (or (user-id-from-username db* username)
-                 (do
-                   (j/insert! db* :account {:username username})
-                   (user-id-from-username db* username))))]
+             (let [id (or (user-id-from-username db* username)
+                          (do
+                            (j/insert! db* :app_user {:username username})
+                            (user-id-from-username db* username)))
+                   session-id (or (session-id-from-csrf db* anti-forgery-token)
+                                  (do
+                                    (j/insert! db* :app_session {:csrf anti-forgery-token})
+                                    (session-id-from-csrf db* anti-forgery-token)))]
+               (j/update! db* :app_session
+                          {:authed id}
+                          ["id = ?" session-id])
+               id))]
     {:app.user/id id}))
+
+(pc/defmutation exit [{::csrf/keys [anti-forgery-token]
+                       :keys       [db]} _]
+  {::pc/sym `app.session/exit}
+  (let [id (j/with-db-transaction [db* db]
+             (let [id (session-id-from-csrf db* anti-forgery-token)]
+               (when id
+                 (j/update! db* :app_session
+                            {:authed nil}
+                            ["id = ?" id]))
+               id))]
+    {}))
+
 
 (pc/defresolver friends [{:keys [db]} {:app.user/keys [id]}]
   {::pc/output [{:app.user/friends [:app.user/id]}]
    ::pc/input  #{:app.user/id}}
-  (let [users (j/query db ["SELECT id FROM account"])]
+  (let [users (j/query db ["SELECT id FROM app_user"])]
     {:app.user/friends (for [{:keys [id]} users]
                          {:app.user/id id})}))
 
@@ -106,7 +135,7 @@
                                             p/env-placeholder-reader]
                   ::p/placeholder-prefixes #{">"}}
      ::p/mutate  pc/mutate-async
-     ::p/plugins [(pc/connect-plugin {::pc/register [login friends username-by-id]})
+     ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends username-by-id]})
                   p/error-handler-plugin]}))
 
 (defn index
@@ -162,13 +191,16 @@
                     "'unsafe-inline'"
                     "'unsafe-eval'"]))
 
+(def db
+  {:dbtype   "postgresql"
+   :dbname   "app"
+   :host     "localhost"
+   :user     "postgres"
+   :password "postgres"})
+
 (def service
   {:env                     :prod
-   :db                      {:dbtype   "postgresql"
-                             :dbname   "app"
-                             :host     "localhost"
-                             :user     "postgres"
-                             :password "postgres"}
+   :db                      db
    ::http/enable-csrf       {}
    ::http/mime-types        mime/default-mime-types
    ::http/resource-path     "public"
