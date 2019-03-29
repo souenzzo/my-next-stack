@@ -120,6 +120,20 @@
                id))]
     {}))
 
+(pc/defmutation chat [{::csrf/keys [anti-forgery-token]
+                       :keys       [db]} {:app.user/keys [id]}]
+  {::pc/sym    `app.user/chat
+   ::pc/input  [:app.user/id]
+   ::pc/output [:app.chat/id]}
+  (let [id (j/with-db-transaction [db* db]
+             (let [id (session-id-from-csrf db* anti-forgery-token)]
+               (when id
+                 (j/update! db* :app_session
+                            {:authed nil}
+                            ["id = ?" id]))
+               id))]
+    {}))
+
 
 (pc/defresolver friends [{:keys [db]} {:app.user/keys [id]}]
   {::pc/output [{:app.user/friends [:app.user/id]}]
@@ -250,6 +264,12 @@
                           http/dev-interceptors
                           http/create-server
                           http/start))))
+
+(defn dev-stop
+  []
+  (swap! http-state (fn [st]
+                      (when st
+                        (http/stop st)))))
 
 (defn -main
   [& _]

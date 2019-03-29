@@ -4,11 +4,17 @@
             [shadow.cljs.devtools.api :as shadow.api]))
 
 (defonce shadow-server
-         (delay (shadow.server/start!)))
+         (atom nil))
 
 (defn -main
   [& _]
   (server/dev-start)
-  (prn [@shadow-server])
+  (swap! shadow-server #(or % (shadow.server/start!)))
   (shadow.api/watch :workspaces)
   (shadow.api/watch :pwa))
+
+
+(defn stop!
+  [& _]
+  (server/dev-stop)
+  (swap! shadow-server #(when % (shadow.server/stop!))))

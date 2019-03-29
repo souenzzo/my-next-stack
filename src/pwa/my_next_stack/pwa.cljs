@@ -8,11 +8,62 @@
             [fulcro.client.dom :as dom]
             [fulcro.client.mutations :as fm]))
 
-(fp/defsc FriendLi [this {:keys [app.user/username]}]
+(fp/defsc Message [this {:app.message/keys [id body]}]
+  {:query [:app.message/id
+           :app.message/body]
+   :ident [:app.message/id :app.message/id]}
+  (dom/li body))
+
+
+(def ui-messages (fp/factory Message {:keyfn :app.message/id}))
+
+(fp/defsc Chat [this {:app.chat/keys [id title messages]
+                      :ui/keys       [body]}]
+  {:query [:app.chat/id
+           :app.chat/title
+           :ui/body
+           {:app.chat/messages (fp/get-query Message)}]
+   :ident [:app.chat/id :app.chat/id]}
+  (fp/fragment
+    (dom/p title)
+    (map ui-messages messages)
+    (dom/form
+      {:onSubmit (fn [e] (.preventDefault e)
+                   (fp/transact! this `[(app.chat/send ~{:app.chat/id      id
+                                                         :app.message/body body})]))}
+      (dom/input {:value    body
+                  :onChange #(fm/set-value! this :ui/body (-> % .-target .-value))}))))
+
+(def ui-chat (fp/factory Chat))
+
+(fm/defmutation app.user/chat
+  [{:keys [app.user/id]}]
+  (action [{:keys [state]}]
+          (swap! state (fn [st]
+                         (-> st
+                             (fr/set-route* ::root-router [::chat id])))))
+  (remote [{:keys [ast state]}]
+          (-> ast
+              (fm/returning state Chat))))
+
+(fp/defsc PageChat [this {::keys   [page id]
+                          :ui/keys [chat]}]
+  {:query         [::page
+                   [::id '_]
+                   :ui/chat]
+   :ident         (fn [] [page id])
+   :initial-state (fn [_]
+                    {::page ::chat
+                     ::id   (fp/tempid)})}
+  (ui-chat chat))
+
+(fp/defsc FriendLi [this {:app.user/keys [id username]}]
   {:query [:app.user/id
            :app.user/username]
    :ident [:app.user/id :app.user/id]}
-  (dom/li username))
+  (dom/li
+    (dom/button {:onClick #(fp/transact! this `[(app.user/chat ~{:app.user/id id})])}
+                username)))
 
 (def ui-friend-li (fp/factory FriendLi {:keyfn :app.user/id}))
 
@@ -90,6 +141,7 @@
 (fr/defsc-router RootRouter [this {::keys [page id]}]
   {:router-targets {::loading Loading
                     ::home    Home
+                    ::chat    PageChat
                     ::login   Login}
    :ident          (fn [] [page id])
    :router-id      ::root-router
