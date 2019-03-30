@@ -81,6 +81,20 @@
       first
       :id))
 
+(defn user-id-from-csrf
+  [db csrf]
+  (-> (j/query db ["
+SELECT
+  app_user.id
+FROM
+  app_user
+INNER JOIN app_session ON
+  (app_user.id = app_session.authed
+  AND app_session.csrf = ?)
+" csrf])
+      first
+      :id))
+
 (defn session-id-from-csrf
   [db csrf]
   (-> (j/query db ["SELECT id FROM app_session WHERE csrf = ?"
@@ -120,27 +134,60 @@
                id))]
     {}))
 
-(pc/defmutation chat [{::csrf/keys [anti-forgery-token]
-                       :keys       [db]} {:app.user/keys [id]}]
-  {::pc/sym    `app.user/chat
+(defn chat-id-by-2-users
+  [db id1 id2]
+  (-> (j/query db ["
+select acu1.chat
+from app_user_chat as acu1
+inner join app_chat ON
+  ( acu1.owner = ? )
+  AND
+  ( app_chat.id = acu1.chat )
+inner join app_user_chat AS acu2 ON
+  ( acu2.owner = ? )
+  AND
+  ( app_chat.id = acu2.chat )
+" id1 id2])
+      first
+      :id))
+
+(pc/defmutation chat-with [{::csrf/keys [anti-forgery-token]
+                            :keys       [db]} {:app.user/keys [id]}]
+  {::pc/sym    `app.chat/chat-with
    ::pc/input  [:app.user/id]
    ::pc/output [:app.chat/id]}
   (let [id (j/with-db-transaction [db* db]
-             (let [id (session-id-from-csrf db* anti-forgery-token)]
-               (when id
-                 (j/update! db* :app_session
-                            {:authed nil}
-                            ["id = ?" id]))
-               id))]
-    {}))
+             (let [my-id (user-id-from-csrf db* anti-forgery-token)]
+               (or (chat-id-by-2-users db* id my-id)
+                   (let [chat-id (:id (first (j/insert! db* :app_chat {:title nil})))]
+                     (j/insert! db* :app_user_chat {:owner my-id :chat chat-id})
+                     (j/insert! db* :app_user_chat {:owner id :chat chat-id})
+                     chat-id))))]
+    {:app.chat/id id}))
 
+(pc/defmutation send-msg [{::csrf/keys [anti-forgery-token]
+                           :keys       [db]} {:keys [app.chat/id app.message/body]}]
+  {::pc/sym    `app.message/send
+   ::pc/input  #{}
+   ::pc/output [:app.message/id]}
+  (let [me (user-id-from-csrf db anti-forgery-token)
+        {:keys [id]} (j/insert! db :app_message {:author me
+                                                 :chat   id
+                                                 :body   body})]
+    {:app.message/id id}))
 
-(pc/defresolver friends [{:keys [db]} {:app.user/keys [id]}]
-  {::pc/output [{:app.user/friends [:app.user/id]}]
+(pc/defresolver friends [{::csrf/keys [anti-forgery-token]
+                          :keys       [db]} {:app.user/keys [id]}]
+  {::pc/output [{:app.user/friends [:app.user/id
+                                    :app.user/me?]}]
    ::pc/input  #{:app.user/id}}
-  (let [users (j/query db ["SELECT id FROM app_user"])]
+  (let [me (user-id-from-csrf db anti-forgery-token)
+        users (j/query db ["SELECT id FROM app_user"])]
     {:app.user/friends (for [{:keys [id]} users]
-                         {:app.user/id id})}))
+                         {:app.user/id  id
+                          :app.user/me? (= me id)})}))
+
+
 
 (def parser
   (p/parallel-parser
@@ -149,7 +196,9 @@
                                             p/env-placeholder-reader]
                   ::p/placeholder-prefixes #{">"}}
      ::p/mutate  pc/mutate-async
-     ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends username-by-id]})
+     ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
+                                                     chat-with send-msg
+                                                     username-by-id]})
                   p/error-handler-plugin]}))
 
 (defn index

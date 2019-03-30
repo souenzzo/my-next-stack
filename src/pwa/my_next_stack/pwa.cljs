@@ -17,8 +17,17 @@
 
 (def ui-messages (fp/factory Message {:keyfn :app.message/id}))
 
+(fm/defmutation app.message/send
+  [{:keys []}]
+  (action [{:keys [state]}]
+          (swap! state (fn [st]
+                         (-> st))))
+  (remote [{:keys [ast state]}]
+          (-> ast)))
+
 (fp/defsc Chat [this {:app.chat/keys [id title messages]
-                      :ui/keys       [body]}]
+                      :ui/keys       [body]
+                      :or            {body ""}}]
   {:query [:app.chat/id
            :app.chat/title
            :ui/body
@@ -29,19 +38,19 @@
     (map ui-messages messages)
     (dom/form
       {:onSubmit (fn [e] (.preventDefault e)
-                   (fp/transact! this `[(app.chat/send ~{:app.chat/id      id
-                                                         :app.message/body body})]))}
+                   (fp/transact! this `[(app.message/send ~{:app.chat/id      id
+                                                            :app.message/body body})]))}
       (dom/input {:value    body
                   :onChange #(fm/set-value! this :ui/body (-> % .-target .-value))}))))
 
 (def ui-chat (fp/factory Chat))
 
-(fm/defmutation app.user/chat
+(fm/defmutation app.chat/chat-with
   [{:keys [app.user/id]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
                          (-> st
-                             (fr/set-route* ::root-router [::chat id])))))
+                             (fr/set-route* ::root-router [::chat ::chat])))))
   (remote [{:keys [ast state]}]
           (-> ast
               (fm/returning state Chat))))
@@ -54,15 +63,17 @@
    :ident         (fn [] [page id])
    :initial-state (fn [_]
                     {::page ::chat
-                     ::id   (fp/tempid)})}
+                     ::id   ::chat})}
   (ui-chat chat))
 
-(fp/defsc FriendLi [this {:app.user/keys [id username]}]
+(fp/defsc FriendLi [this {:app.user/keys [id username me?]}]
   {:query [:app.user/id
+           :app.user/me?
            :app.user/username]
    :ident [:app.user/id :app.user/id]}
   (dom/li
-    (dom/button {:onClick #(fp/transact! this `[(app.user/chat ~{:app.user/id id})])}
+    (dom/button {:disabled me?
+                 :onClick  #(fp/transact! this `[(app.chat/chat-with ~{:app.user/id id})])}
                 username)))
 
 (def ui-friend-li (fp/factory FriendLi {:keyfn :app.user/id}))
