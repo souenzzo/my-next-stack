@@ -6,6 +6,8 @@
            com.wsscode/pathom             {:mvn/version "2.2.12"}
            io.pedestal/pedestal.service   {:mvn/version "0.5.5"}
            io.pedestal/pedestal.jetty     {:mvn/version "0.5.5"}
+           com.houseofding/rasql          {:git/url "git@github.com:cdinger/rasql.git"
+                                           :sha     "ed8cb378a403a86096924669068d785dde07b8f5"}
            org.clojure/java.jdbc          {:mvn/version "0.7.9"}
            org.postgresql/postgresql      {:mvn/version "42.2.5"}
            ch.qos.logback/logback-classic {:mvn/version "1.3.0-alpha4"}

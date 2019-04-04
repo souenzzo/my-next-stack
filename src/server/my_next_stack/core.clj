@@ -171,10 +171,26 @@ inner join app_user_chat AS acu2 ON
    ::pc/input  #{}
    ::pc/output [:app.message/id]}
   (let [me (user-id-from-csrf db anti-forgery-token)
-        {:keys [id]} (j/insert! db :app_message {:author me
-                                                 :chat   id
-                                                 :body   body})]
+        {:keys [id]} (first (j/insert! db :app_message {:author me
+                                                        :chat   id
+                                                        :body   body}))]
     {:app.message/id id}))
+
+(pc/defresolver message-title [{:keys [db]} {:keys [app.chat/id]}]
+  {::pc/input  #{:app.chat/id}
+   ::pc/output [:app.chat/title]}
+  (let [{:keys [id title]} (-> (j/query db ["SELECT title, id FROM app_chat WHERE id = ?" id])
+                               first)]
+    {:app.chat/title (or title (pr-str {:id id}))}))
+
+
+(pc/defresolver chat-messages [{:keys [db]} {:keys [app.chat/id]}]
+  {::pc/input  #{:app.chat/id}
+   ::pc/output [:app.chat/messages]}
+  (let [messages (j/query db ["SELECT * FROM app_message WHERE chat = ?" id])]
+    {:app.chat/messages (for [{:keys [id]} messages]
+                          {:app.message/id id})}))
+
 
 (pc/defresolver friends [{::csrf/keys [anti-forgery-token]
                           :keys       [db]} {:app.user/keys [id]}]
@@ -197,6 +213,7 @@ inner join app_user_chat AS acu2 ON
                   ::p/placeholder-prefixes #{">"}}
      ::p/mutate  pc/mutate-async
      ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
+                                                     message-title chat-messages
                                                      chat-with send-msg
                                                      username-by-id]})
                   p/error-handler-plugin]}))

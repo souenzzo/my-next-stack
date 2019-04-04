@@ -34,7 +34,7 @@
            {:app.chat/messages (fp/get-query Message)}]
    :ident [:app.chat/id :app.chat/id]}
   (fp/fragment
-    (dom/p title)
+    (dom/p (pr-str [title id]))
     (map ui-messages messages)
     (dom/form
       {:onSubmit (fn [e] (.preventDefault e)
@@ -53,18 +53,22 @@
                              (fr/set-route* ::root-router [::chat ::chat])))))
   (remote [{:keys [ast state]}]
           (-> ast
-              (fm/returning state Chat))))
+              (fm/returning state Chat)
+              (fm/with-target [::chat ::chat :ui/chat]))))
 
 (fp/defsc PageChat [this {::keys   [page id]
-                          :ui/keys [chat]}]
+                          :ui/keys [chat] :as x}]
   {:query         [::page
-                   [::id '_]
-                   :ui/chat]
+                   ::id
+                   {:ui/chat (fp/get-query Chat)}]
    :ident         (fn [] [page id])
    :initial-state (fn [_]
                     {::page ::chat
-                     ::id   ::chat})}
-  (ui-chat chat))
+                     ::id   ::chat
+                     :ui/chat (fp/get-initial-state Chat _)})}
+  (fp/fragment
+    (dom/code (pr-str x))
+    (ui-chat chat)))
 
 (fp/defsc FriendLi [this {:app.user/keys [id username me?]}]
   {:query [:app.user/id
@@ -165,7 +169,9 @@
   {:query         [{::root-router (fp/get-query RootRouter)}]
    :initial-state (fn [_]
                     {::root-router (fp/get-initial-state RootRouter _)})}
-  (ui-root-router root-router))
+  (fp/fragment
+    (ui-root-router root-router)
+    (dom/code (pr-str root-router))))
 
 (defn render
   [client]
