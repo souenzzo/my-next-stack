@@ -63,12 +63,10 @@
                    {:ui/chat (fp/get-query Chat)}]
    :ident         (fn [] [page id])
    :initial-state (fn [_]
-                    {::page ::chat
-                     ::id   ::chat
+                    {::page   ::chat
+                     ::id     ::chat
                      :ui/chat (fp/get-initial-state Chat _)})}
-  (fp/fragment
-    (dom/code (pr-str x))
-    (ui-chat chat)))
+  (ui-chat chat))
 
 (fp/defsc FriendLi [this {:app.user/keys [id username me?]}]
   {:query [:app.user/id
@@ -169,9 +167,7 @@
   {:query         [{::root-router (fp/get-query RootRouter)}]
    :initial-state (fn [_]
                     {::root-router (fp/get-initial-state RootRouter _)})}
-  (fp/fragment
-    (ui-root-router root-router)
-    (dom/code (pr-str root-router))))
+  (ui-root-router root-router))
 
 (defn render
   [client]

@@ -12,7 +12,9 @@
             [cognitect.transit :as transit]
             [clojure.string :as string]
             [io.pedestal.interceptor :as interceptor]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [fulcro.client.primitives :as fp]
+            [fulcro.client.impl.protocols :as fcip])
   (:import (org.eclipse.jetty.server.handler.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler)))
 
@@ -204,46 +206,46 @@ inner join app_user_chat AS acu2 ON
                           :app.user/me? (= me id)})}))
 
 
+(pc/defresolver index-data [{::csrf/keys [anti-forgery-token]} _]
+  {::pc/output [::csrf/anti-forgery-token]}
+  {::csrf/anti-forgery-token anti-forgery-token
+   ::script-src              "/_static/pwa/main.js"})
 
-(def parser
-  (p/parallel-parser
-    {::p/env     {::p/reader               [p/map-reader
-                                            pc/all-parallel-readers
-                                            p/env-placeholder-reader]
-                  ::p/placeholder-prefixes #{">"}}
-     ::p/mutate  pc/mutate-async
-     ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
-                                                     message-title chat-messages
-                                                     chat-with send-msg
-                                                     username-by-id]})
-                  p/error-handler-plugin]}))
+(fp/defsc Index [this {::csrf/keys [anti-forgery-token]}]
+  {:query [::csrf/anti-forgery-token]}
+  (dom/html
+    {:lang "pt-BR"}
+    (dom/head
+      (dom/meta {:charset "UTF-8"})
+      (dom/meta {:name    "viewport"
+                 :content "width=device-width, initial-scale=1"})
+      (dom/link {:id   "favicon"
+                 :rel  "shortcut icon"
+                 :type "image/svg+xml"
+                 :href "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'></svg>"})
+      (dom/title "My Next Stack"))
+    (dom/body
+      {:data-anti-forgery-token anti-forgery-token}
+      (dom/div {:id "app"})
+      (dom/script {:src "/_static/pwa/main.js"})
+      (dom/script {:dangerouslySetInnerHTML {:__html "my_next_stack.pwa.main()"}}))))
 
-(defn index
-  [{::csrf/keys [anti-forgery-token] :keys [db]}]
-  {:body   (dom/html
-             {:lang "pt-BR"}
-             (dom/head
-               (dom/meta {:charset "UTF-8"})
-               (dom/meta {:name    "viewport"
-                          :content "width=device-width, initial-scale=1"})
-               (dom/link {:id   "favicon"
-                          :rel  "shortcut icon"
-                          :type "image/svg+xml"
-                          :href "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'></svg>"})
-               (dom/title "My Next Stack"))
-             (dom/body
-               {:data-anti-forgery-token anti-forgery-token}
-               (dom/div {:id "app"})
-               (dom/script {:src "/_static/pwa/main.js"})
-               (dom/script {:dangerouslySetInnerHTML {:__html "my_next_stack.pwa.main()"}})))
+(def ui-index (fp/factory Index))
 
-   :status 200})
+(def index
+  {:name  ::index
+   :enter (fn [{{:keys [parser]} :request
+                :keys            [request]
+                :as              context}]
+            (let [props (async/<!! (parser request (fp/get-query Index)))]
+              (assoc context :response {:body   (fcip/render (ui-index props))
+                                        :status 200})))})
 
 (def api
   {:name  ::api
-   :enter (fn [{{:keys [edn-params transit-params]} :request
-                :keys                               [request]
-                :as                                 context}]
+   :enter (fn [{{:keys [edn-params transit-params parser]} :request
+                :keys                                      [request]
+                :as                                        context}]
             (let [query (or edn-params transit-params)
                   result (parser request query)]
               (async/go
@@ -281,6 +283,18 @@ inner join app_user_chat AS acu2 ON
 (def service
   {:env                     :prod
    :db                      db
+   :parser                  (p/parallel-parser
+                              {::p/env     {::p/reader               [p/map-reader
+                                                                      pc/all-parallel-readers
+                                                                      p/env-placeholder-reader]
+                                            ::p/placeholder-prefixes #{">"}}
+                               ::p/mutate  pc/mutate-async
+                               ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
+                                                                               index-data
+                                                                               message-title chat-messages
+                                                                               chat-with send-msg
+                                                                               username-by-id]})
+                                            p/error-handler-plugin]})
    ::http/enable-csrf       {}
    ::http/mime-types        mime/default-mime-types
    ::http/resource-path     "public"
@@ -292,12 +306,16 @@ inner join app_user_chat AS acu2 ON
    ::http/host              "0.0.0.0"
    ::http/type              :jetty})
 
+(defn env-interceptor
+  [env]
+  (->> (fn [ctx] (update ctx :request #(into env %)))
+       (hash-map :name ::env-interceptor :enter)
+       (interceptor/interceptor)))
+
 (defn add-env-interceptor
   [env]
   (->> (fn [interceptors]
-         (into [(interceptor/interceptor {:name  ::env-interceptor
-                                          :enter (fn [ctx]
-                                                   (update ctx :request #(into env %)))})]
+         (into [(env-interceptor env)]
                interceptors))
        (update env ::http/interceptors)))
 
