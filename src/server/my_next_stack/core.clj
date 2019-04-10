@@ -178,6 +178,18 @@ inner join app_user_chat AS acu2 ON
                                                         :body   body}))]
     {:app.message/id id}))
 
+(pc/defmutation set-title [{:keys [db]} {:keys [app.chat/id app.chat/title]}]
+  {::pc/sym    `app.chat/new-title
+   ::pc/input  #{}
+   ::pc/params [:app.chat/id
+                :app.chat/title]
+   ::pc/output [:app.chat/id
+                :app.chat/title]}
+  (prn [j/update! db :app_chat {:title title} ["WHERE id = ?" id]])
+  (j/update! db :app_chat {:title title} ["id = ?" id])
+  {:app.chat/id    id
+   :app.chat/title title})
+
 (pc/defresolver message-title [{:keys [db]} {:keys [app.chat/id]}]
   {::pc/input  #{:app.chat/id}
    ::pc/output [:app.chat/title]}
@@ -299,7 +311,7 @@ inner join app_user_chat AS acu2 ON
                                             ::p/placeholder-prefixes #{">"}}
                                ::p/mutate  pc/mutate-async
                                ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
-                                                                               index-data message-body
+                                                                               index-data message-body set-title
                                                                                message-title chat-messages
                                                                                chat-with send-msg
                                                                                username-by-id]})
@@ -343,7 +355,7 @@ inner join app_user_chat AS acu2 ON
 
 (defn dev-start
   []
-  (install-schema! (:db service) (mapv slurp [(io/resource "schema.sql")]))
+  #_(install-schema! (:db service) (mapv slurp [(io/resource "schema.sql")]))
   (swap! http-state (fn [st]
                       (when st
                         (http/stop st))
