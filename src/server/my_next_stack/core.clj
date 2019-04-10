@@ -151,7 +151,7 @@ inner join app_user_chat AS acu2 ON
   ( app_chat.id = acu2.chat )
 " id1 id2])
       first
-      :id))
+      :chat))
 
 (pc/defmutation chat-with [{::csrf/keys [anti-forgery-token]
                             :keys       [db]} {:app.user/keys [id]}]
@@ -205,6 +205,15 @@ inner join app_user_chat AS acu2 ON
                          {:app.user/id  id
                           :app.user/me? (= me id)})}))
 
+
+(pc/defresolver message-body [{:keys [db]} {:keys [app.message/id]}]
+  {::pc/input  #{:app.message/id}
+   ::pc/output [:app.message/body]}
+  (->> ["SELECT body FROM app_message WHERE id = ?" id]
+       (j/query db)
+       first
+       :body
+       (hash-map :app.message/body)))
 
 (pc/defresolver index-data [{::csrf/keys [anti-forgery-token]} _]
   {::pc/output [::csrf/anti-forgery-token]}
@@ -290,7 +299,7 @@ inner join app_user_chat AS acu2 ON
                                             ::p/placeholder-prefixes #{">"}}
                                ::p/mutate  pc/mutate-async
                                ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
-                                                                               index-data
+                                                                               index-data message-body
                                                                                message-title chat-messages
                                                                                chat-with send-msg
                                                                                username-by-id]})

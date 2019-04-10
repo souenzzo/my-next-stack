@@ -6,24 +6,28 @@
             [fulcro.client.routing :as fr]
             [goog.object :as gobj]
             [fulcro.client.dom :as dom]
-            [fulcro.client.mutations :as fm]))
+            [fulcro.client.mutations :as fm]
+            [fulcro.client.data-fetch :as df]))
 
 (fp/defsc Message [this {:app.message/keys [id body]}]
   {:query [:app.message/id
            :app.message/body]
    :ident [:app.message/id :app.message/id]}
-  (dom/li body))
+  (dom/li (pr-str body)))
 
 
 (def ui-messages (fp/factory Message {:keyfn :app.message/id}))
 
 (fm/defmutation app.message/send
-  [{:keys []}]
+  [{:keys [app.chat/id]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
-                         (-> st))))
+                         (-> st
+                             (assoc-in [:app.chat/id id :ui/body] "")))))
   (remote [{:keys [ast state]}]
-          (-> ast)))
+          (-> ast
+              (fm/returning state Message)
+              (fm/with-target (df/append-to [:app.chat/id id :app.chat/messages])))))
 
 (fp/defsc Chat [this {:app.chat/keys [id title messages]
                       :ui/keys       [body]
@@ -34,7 +38,7 @@
            {:app.chat/messages (fp/get-query Message)}]
    :ident [:app.chat/id :app.chat/id]}
   (fp/fragment
-    (dom/p (pr-str [title id]))
+    (dom/p title)
     (map ui-messages messages)
     (dom/form
       {:onSubmit (fn [e] (.preventDefault e)
