@@ -13,10 +13,15 @@
             [clojure.string :as string]
             [io.pedestal.interceptor :as interceptor]
             [clojure.java.io :as io]
+            [fulcro.transit :as ft]
             [fulcro.client.primitives :as fp]
-            [fulcro.client.impl.protocols :as fcip])
+            [fulcro.client.impl.protocols :as fcip]
+            [io.pedestal.http.body-params :as body-params])
   (:import (org.eclipse.jetty.server.handler.gzip GzipHandler)
-           (org.eclipse.jetty.servlet ServletContextHandler)))
+           (fulcro.tempid TempId)
+           (fulcro.transit TempIdHandler)
+           (org.eclipse.jetty.servlet ServletContextHandler)
+           (com.cognitect.transit ReadHandler)))
 
 (defn transit-type
   ([x] (transit-type x false))
@@ -29,11 +34,19 @@
        verbose? :json-verbose
        :else :json))))
 
+(def transit-write-hanlers
+  {TempId (new TempIdHandler)})
+
+(def transit-read-handlers
+  {"fulcro/tempid" (reify
+                     ReadHandler
+                     (fromRep [_ id] (TempId. id)))})
+
 (defn pr-transit
   [type body]
   (fn pr-transit [out]
     (try
-      (let [writer (transit/writer out type)]
+      (let [writer (transit/writer out type {:handlers transit-write-hanlers})]
         (transit/write writer body))
       (catch Throwable e
         (log/error :type type :body body :pr-transit e)))))
@@ -325,7 +338,7 @@ inner join app_user_chat AS acu2 ON
                                                                                 chat-with send-msg
                                                                                 username-by-id]})
                                              p/error-handler-plugin]})
-   ::http/enable-csrf       {}
+   ::http/enable-csrf       {:body-params (body-params/default-parser-map :transit-options [{:handlers transit-read-handlers}])}
    ::http/mime-types        mime/default-mime-types
    ::http/resource-path     "public"
    ::http/file-path         "target/public"
