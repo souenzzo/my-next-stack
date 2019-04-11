@@ -105,7 +105,8 @@ INNER JOIN app_session ON
       :id))
 
 (pc/defmutation login [{::csrf/keys [anti-forgery-token]
-                        :keys       [db]} {:app.user/keys [username]}]
+                        :keys       [db]} {tempid         :app.user/id
+                                           :app.user/keys [username]}]
   {::pc/sym    `app.user/login
    ::pc/output [:app.user/username]
    ::pc/params [:app.user/id]}
@@ -122,7 +123,8 @@ INNER JOIN app_session ON
                           {:authed id}
                           ["id = ?" session-id])
                id))]
-    {:app.user/id id}))
+    {:app.user/id id
+     ::fp/tempids {tempid id}}))
 
 (pc/defmutation exit [{::csrf/keys [anti-forgery-token]
                        :keys       [db]} _]
@@ -154,7 +156,8 @@ inner join app_user_chat AS acu2 ON
       :chat))
 
 (pc/defmutation chat-with [{::csrf/keys [anti-forgery-token]
-                            :keys       [db]} {:app.user/keys [id]}]
+                            :keys       [db]} {tempid         :app.chat/id
+                                               :app.user/keys [id]}]
   {::pc/sym    `app.chat/chat-with
    ::pc/input  [:app.user/id]
    ::pc/output [:app.chat/id]}
@@ -165,10 +168,12 @@ inner join app_user_chat AS acu2 ON
                      (j/insert! db* :app_user_chat {:owner my-id :chat chat-id})
                      (j/insert! db* :app_user_chat {:owner id :chat chat-id})
                      chat-id))))]
-    {:app.chat/id id}))
+    {:app.chat/id id
+     ::fp/tempids {tempid id}}))
 
 (pc/defmutation send-msg [{::csrf/keys [anti-forgery-token]
-                           :keys       [db]} {:keys [app.chat/id app.message/body]}]
+                           :keys       [db]} {tempid :app.message/id
+                                              :keys  [app.chat/id app.message/body]}]
   {::pc/sym    `app.message/send
    ::pc/input  #{}
    ::pc/output [:app.message/id]}
@@ -176,7 +181,8 @@ inner join app_user_chat AS acu2 ON
         {:keys [id]} (first (j/insert! db :app_message {:author me
                                                         :chat   id
                                                         :body   body}))]
-    {:app.message/id id}))
+    {:app.message/id id
+     ::fp/tempids    {tempid id}}))
 
 (pc/defmutation set-title [{:keys [db]} {:keys [app.chat/id app.chat/title]}]
   {::pc/sym    `app.chat/new-title
@@ -258,7 +264,8 @@ inner join app_user_chat AS acu2 ON
    :enter (fn [{{:keys [parser]} :request
                 :keys            [request]
                 :as              context}]
-            (let [props (async/<!! (parser request (fp/get-query Index)))]
+            (let [parser (parser)
+                  props (async/<!! (parser request (fp/get-query Index)))]
               (assoc context :response {:body   (fcip/render (ui-index props))
                                         :status 200})))})
 
@@ -268,6 +275,7 @@ inner join app_user_chat AS acu2 ON
                 :keys                                      [request]
                 :as                                        context}]
             (let [query (or edn-params transit-params)
+                  parser (parser)
                   result (parser request query)]
               (async/go
                 (assoc context :response {:body   (async/<! result)
@@ -304,18 +312,19 @@ inner join app_user_chat AS acu2 ON
 (def service
   {:env                     :prod
    :db                      db
-   :parser                  (p/parallel-parser
-                              {::p/env     {::p/reader               [p/map-reader
-                                                                      pc/all-parallel-readers
-                                                                      p/env-placeholder-reader]
-                                            ::p/placeholder-prefixes #{">"}}
-                               ::p/mutate  pc/mutate-async
-                               ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
-                                                                               index-data message-body set-title
-                                                                               message-title chat-messages
-                                                                               chat-with send-msg
-                                                                               username-by-id]})
-                                            p/error-handler-plugin]})
+   :parser                  #(p/parallel-parser
+                               {::p/env     {::p/reader                 [p/map-reader
+                                                                         pc/all-parallel-readers
+                                                                         p/env-placeholder-reader]
+                                             ::pc/mutation-join-globals [::fp/tempids]
+                                             ::p/placeholder-prefixes   #{">"}}
+                                ::p/mutate  pc/mutate-async
+                                ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
+                                                                                index-data message-body set-title
+                                                                                message-title chat-messages
+                                                                                chat-with send-msg
+                                                                                username-by-id]})
+                                             p/error-handler-plugin]})
    ::http/enable-csrf       {}
    ::http/mime-types        mime/default-mime-types
    ::http/resource-path     "public"
@@ -355,7 +364,7 @@ inner join app_user_chat AS acu2 ON
 
 (defn dev-start
   []
-  #_(install-schema! (:db service) (mapv slurp [(io/resource "schema.sql")]))
+  (install-schema! (:db service) (mapv slurp [(io/resource "schema.sql")]))
   (swap! http-state (fn [st]
                       (when st
                         (http/stop st))
@@ -382,6 +391,8 @@ inner join app_user_chat AS acu2 ON
                       (when st
                         (http/stop st))
                       (-> service
+                          (update :parser (fn [parser]
+                                            (constantly (parser))))
                           http/default-interceptors
                           add-env-interceptor
                           http/create-server

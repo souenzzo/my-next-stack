@@ -19,15 +19,20 @@
 (def ui-messages (fp/factory Message {:keyfn :app.message/id}))
 
 (fm/defmutation app.message/send
-  [{:keys [app.chat/id]}]
+  [{tempid :app.message/id
+    :keys  [app.message/body
+            app.chat/id]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
                          (-> st
+                             (assoc-in [:app.message/id tempid] {:app.message/id   tempid
+                                                                 :app.message/body body})
+                             (update-in [:app.chat/id id :app.chat/messages] conj [:app.message/id tempid])
+
                              (assoc-in [:app.chat/id id :ui/body] "")))))
   (remote [{:keys [ast state]}]
           (-> ast
-              (fm/returning state Message)
-              (fm/with-target (df/append-to [:app.chat/id id :app.chat/messages])))))
+              (fm/returning state Message))))
 
 (fp/defsc Chat [this {:app.chat/keys [id title messages]
                       :ui/keys       [body new-title]
@@ -49,6 +54,7 @@
     (dom/form
       {:onSubmit (fn [e] (.preventDefault e)
                    (fp/transact! this `[(app.message/send ~{:app.chat/id      id
+                                                            :app.message/id   (fp/tempid)
                                                             :app.message/body body})]))}
       (dom/input {:value    body
                   :onChange #(fm/set-value! this :ui/body (-> % .-target .-value))}))))
@@ -66,15 +72,16 @@
 (def ui-chat (fp/factory Chat))
 
 (fm/defmutation app.chat/chat-with
-  [{:keys [app.user/id]}]
+  [{:keys [app.chat/id]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
                          (-> st
+                             (assoc-in [:app.chat/id id] {:app.chat/id id})
+                             (assoc-in [::chat ::chat :ui/chat] [:app.chat/id id])
                              (fr/set-route* ::root-router [::chat ::chat])))))
   (remote [{:keys [ast state]}]
           (-> ast
-              (fm/returning state Chat)
-              (fm/with-target [::chat ::chat :ui/chat]))))
+              (fm/returning state Chat))))
 
 (fp/defsc PageChat [this {::keys   [page id]
                           :ui/keys [chat] :as x}]
@@ -98,7 +105,8 @@
    :ident [:app.user/id :app.user/id]}
   (dom/li
     (dom/button {:disabled me?
-                 :onClick  #(fp/transact! this `[(app.chat/chat-with ~{:app.user/id id})])}
+                 :onClick  #(fp/transact! this `[(app.chat/chat-with ~{:app.chat/id (fp/tempid)
+                                                                       :app.user/id id})])}
                 username)))
 
 (def ui-friend-li (fp/factory FriendLi {:keyfn :app.user/id}))
@@ -114,10 +122,12 @@
 
 (def ui-friends-list (fp/factory FriendsList))
 (fm/defmutation app.user/login
-  [{:app.user/keys [username]}]
+  [{:app.user/keys [username id]}]
   (action [{:keys [state]}]
           (swap! state (fn [st]
                          (-> st
+                             (assoc-in [:app.user/id id] {:app.user/id       id
+                                                          :app.user/username username})
                              (fr/set-route* ::root-router [::home ::home])))))
   (remote [{:keys [ast state]}]
           true
@@ -146,7 +156,8 @@
     {:style    {:display        "flex"
                 :justifyContent "center"}
      :onSubmit (fn [e] (.preventDefault e)
-                 (fp/transact! this `[(app.user/login ~{:app.user/username username})]))}
+                 (fp/transact! this `[(app.user/login ~{:app.user/id       (fp/tempid)
+                                                        :app.user/username username})]))}
     (dom/input {:value    username
                 :onChange #(fm/set-value! this :ui/username (-> % .-target .-value))})))
 
