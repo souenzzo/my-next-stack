@@ -7,13 +7,13 @@
             [com.wsscode.pathom.connect :as pc]
             [fulcro.client.dom-server :as dom]
             [ring.util.mime-type :as mime]
+            [my-next-stack.client.ui :as ui]
             [io.pedestal.log :as log]
             [clojure.core.async :as async]
             [cognitect.transit :as transit]
             [clojure.string :as string]
             [io.pedestal.interceptor :as interceptor]
             [clojure.java.io :as io]
-            [fulcro.transit :as ft]
             [fulcro.client.primitives :as fp]
             [fulcro.client.impl.protocols :as fcip]
             [io.pedestal.http.body-params :as body-params])
@@ -204,7 +204,6 @@ inner join app_user_chat AS acu2 ON
                 :app.chat/title]
    ::pc/output [:app.chat/id
                 :app.chat/title]}
-  (prn [j/update! db :app_chat {:title title} ["WHERE id = ?" id]])
   (j/update! db :app_chat {:title title} ["id = ?" id])
   {:app.chat/id    id
    :app.chat/title title})
@@ -251,6 +250,8 @@ inner join app_user_chat AS acu2 ON
   {::csrf/anti-forgery-token anti-forgery-token
    ::script-src              "/_static/pwa/main.js"})
 
+(def ui-root (fp/factory ui/Root))
+
 (fp/defsc Index [this {::csrf/keys [anti-forgery-token]}]
   {:query [::csrf/anti-forgery-token]}
   (dom/html
@@ -266,7 +267,8 @@ inner join app_user_chat AS acu2 ON
       (dom/title "My Next Stack"))
     (dom/body
       {:data-anti-forgery-token anti-forgery-token}
-      (dom/div {:id "app"})
+      (dom/div {:id "app"}
+               (ui-root (fp/get-initial-state ui/Root {})))
       (dom/script {:src "/_static/pwa/main.js"})
       (dom/script {:dangerouslySetInnerHTML {:__html "my_next_stack.pwa.main()"}}))))
 
