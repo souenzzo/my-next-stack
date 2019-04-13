@@ -1,23 +1,21 @@
 {:paths   ["src/server" "src/common" "resources"]
  :deps    {org.clojure/clojure            {:mvn/version "1.10.1-beta1"}
            org.clojure/core.async         {:mvn/version "0.4.490"}
-           fulcrologic/fulcro             {:mvn/version "2.8.7"}
+           fulcrologic/fulcro             {:mvn/version "2.8.8"}
            com.cognitect/transit-clj      {:mvn/version "0.8.313"}
-           com.wsscode/pathom             {:mvn/version "2.2.12"}
+           com.wsscode/pathom             {:mvn/version "2.2.13"}
            io.pedestal/pedestal.service   {:mvn/version "0.5.5"}
            io.pedestal/pedestal.jetty     {:mvn/version "0.5.5"}
-           com.houseofding/rasql          {:git/url "git@github.com:cdinger/rasql.git"
-                                           :sha     "ed8cb378a403a86096924669068d785dde07b8f5"}
            org.clojure/java.jdbc          {:mvn/version "0.7.9"}
            org.postgresql/postgresql      {:mvn/version "42.2.5"}
            ch.qos.logback/logback-classic {:mvn/version "1.3.0-alpha4"}
            clj-time/clj-time              {:mvn/version "0.15.1"}}
  :aliases {:dev  {:extra-paths ["src/cards" "src/dev" "dev-resources"]
-                  :extra-deps  {nubank/workspaces          {:mvn/version "1.0.7"}
+                  :extra-deps  {nubank/workspaces          {:mvn/version "1.0.8"}
                                 binaryage/devtools         {:mvn/version "0.9.10"}
-                                midje/midje                {:mvn/version "1.9.4"}
-                                org.clojure/test.check     {:mvn/version "0.10.0-alpha3"}
+                                midje/midje                {:mvn/version "1.9.8"}
+                                org.clojure/test.check     {:mvn/version "0.10.0-alpha4"}
                                 fulcrologic/fulcro-inspect {:mvn/version "2.2.5"}}}
            :cljs {:extra-paths ["src/pwa"]
                   :extra-deps  {org.clojure/clojurescript {:mvn/version "1.10.520"}
-                                thheller/shadow-cljs      {:mvn/version "2.8.23"}}}}}
+                                thheller/shadow-cljs      {:mvn/version "2.8.30"}}}}}
