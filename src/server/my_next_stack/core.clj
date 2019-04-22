@@ -4,82 +4,12 @@
             [clojure.java.jdbc :as j]
             [io.pedestal.http.csrf :as csrf]
             [com.wsscode.pathom.core :as p]
+            [souenzzo.pedestal :as pedestal]
             [com.wsscode.pathom.connect :as pc]
             [fulcro.client.dom-server :as dom]
-            [ring.util.mime-type :as mime]
             [my-next-stack.client.ui :as ui]
-            [io.pedestal.log :as log]
-            [clojure.core.async :as async]
-            [cognitect.transit :as transit]
-            [clojure.string :as string]
-            [io.pedestal.interceptor :as interceptor]
             [clojure.java.io :as io]
-            [fulcro.client.primitives :as fp]
-            [fulcro.client.impl.protocols :as fcip]
-            [io.pedestal.http.body-params :as body-params])
-  (:import (org.eclipse.jetty.server.handler.gzip GzipHandler)
-           (fulcro.tempid TempId)
-           (fulcro.transit TempIdHandler)
-           (org.eclipse.jetty.servlet ServletContextHandler)
-           (com.cognitect.transit ReadHandler)))
-
-(defn transit-type
-  ([x] (transit-type x false))
-  ([x verbose?]
-   (when (and (string? x)
-              (or (string/starts-with? x "application/transit")
-                  (= x "*/*")))
-     (cond
-       (string/ends-with? x "+msgpack") :msgpack
-       verbose? :json-verbose
-       :else :json))))
-
-(def transit-write-hanlers
-  {TempId (new TempIdHandler)})
-
-(def transit-read-handlers
-  {"fulcro/tempid" (reify
-                     ReadHandler
-                     (fromRep [_ id] (TempId. id)))})
-
-(defn pr-transit
-  [type body]
-  (fn pr-transit [out]
-    (try
-      (let [writer (transit/writer out type {:handlers transit-write-hanlers})]
-        (transit/write writer body))
-      (catch Throwable e
-        (log/error :type type :body body :pr-transit e)))))
-
-
-(def type->conten-type
-  {:json         "application/transit+json"
-   :json-verbose "application/transit+json"
-   :msgpack      "application/transit+msgpack"
-   :edn          "application/edn"})
-
-(def write-body
-  {:name  ::write-body
-   :leave (fn leave-write-body
-            [{{::keys           [verbose-transit?]
-               {:strs [accept]} :headers} :request
-              {:keys [body]}              :response
-              :as                         ctx}]
-            (cond
-              (dom/element? body) (-> ctx
-                                      (assoc-in [:response :headers "Content-Type"] "text/html")
-                                      (assoc-in [:response :body] (str "<!DOCTYPE html>\n"
-                                                                       (dom/render-to-str body)
-                                                                       "\n")))
-              :else (let [type (transit-type accept verbose-transit?)
-                          response-body (if type
-                                          (pr-transit type body)
-                                          (pr-str body))
-                          content-type (type->conten-type (or type :edn))]
-                      (-> ctx
-                          (assoc-in [:response :body] response-body)
-                          (assoc-in [:response :headers "Content-Type"] content-type)))))})
-
+            [fulcro.client.primitives :as fp]))
 
 (pc/defresolver username-by-id [{:keys [db]} {:app.user/keys [id]}]
   {::pc/input  #{:app.user/id}
@@ -274,49 +204,6 @@ inner join app_user_chat AS acu2 ON
 
 (def ui-index (fp/factory Index))
 
-(def index
-  {:name  ::index
-   :enter (fn [{{:keys [parser]} :request
-                :keys            [request]
-                :as              context}]
-            (let [parser (parser)
-                  props (async/<!! (parser request (fp/get-query Index)))]
-              (assoc context :response {:body   (fcip/render (ui-index props))
-                                        :status 200})))})
-
-(def api
-  {:name  ::api
-   :enter (fn [{{:keys [edn-params transit-params parser]} :request
-                :keys                                      [request]
-                :as                                        context}]
-            (let [query (or edn-params transit-params)
-                  parser (parser)
-                  result (parser request query)]
-              (async/go
-                (assoc context :response {:body   (async/<! result)
-                                          :status 200}))))})
-
-(def routes
-  `#{["/" :get [write-body index]]
-     ["/api" :post [write-body api]]})
-
-
-(defn context-configurator
-  "Habilitando gzip nas respostas"
-  [^ServletContextHandler context]
-  (let [gzip-handler (GzipHandler.)]
-    (.addIncludedMethods gzip-handler (into-array ["GET" "POST"]))
-    (.setExcludedAgentPatterns gzip-handler (make-array String 0))
-    (.setGzipHandler context gzip-handler))
-  context)
-
-
-(def content-security-policy-settings
-  (string/join " " ["script-src"
-                    "'self'"
-                    "'unsafe-inline'"
-                    "'unsafe-eval'"]))
-
 (def db
   {:dbtype   "postgresql"
    :dbname   "app"
@@ -325,44 +212,29 @@ inner join app_user_chat AS acu2 ON
    :password "postgres"})
 
 (def service
-  {:env                     :prod
-   :db                      db
-   :parser                  #(p/parallel-parser
-                               {::p/env     {::p/reader                 [p/map-reader
-                                                                         pc/all-parallel-readers
-                                                                         p/env-placeholder-reader]
-                                             ::pc/mutation-join-globals [::fp/tempids]
-                                             ::p/placeholder-prefixes   #{">"}}
-                                ::p/mutate  pc/mutate-async
-                                ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
-                                                                                index-data message-body set-title
-                                                                                message-title chat-messages
-                                                                                chat-with send-msg
-                                                                                username-by-id]})
-                                             p/error-handler-plugin]})
-   ::http/enable-csrf       {:body-params (body-params/default-parser-map :transit-options [{:handlers transit-read-handlers}])}
-   ::http/mime-types        mime/default-mime-types
-   ::http/resource-path     "public"
-   ::http/file-path         "target/public"
-   ::http/container-options {:context-configurator context-configurator}
-   ::http/secure-headers    {:content-security-policy-settings content-security-policy-settings}
-   ::http/port              8080
-   ::http/routes            routes
-   ::http/host              "0.0.0.0"
-   ::http/type              :jetty})
+  {:env                 :prod
+   :db                  db
+   ::http/port          8080
+   :ui-index            ui-index
+   :parser              #(p/parallel-parser
+                           {::p/env     {::p/reader                 [p/map-reader
+                                                                     pc/all-parallel-readers
+                                                                     p/env-placeholder-reader]
+                                         ::pc/mutation-join-globals [::fp/tempids]
+                                         ::p/placeholder-prefixes   #{">"}}
+                            ::p/mutate  pc/mutate-async
+                            ::p/plugins [(pc/connect-plugin {::pc/register [login exit friends
+                                                                            index-data message-body set-title
+                                                                            message-title chat-messages
+                                                                            chat-with send-msg
+                                                                            username-by-id]})
+                                         p/error-handler-plugin]})
+   ::http/resource-path "public"
+   ::http/file-path     "target/public"
+   ::http/host          "0.0.0.0"
+   ::http/join?         false
+   ::http/type          :jetty})
 
-(defn env-interceptor
-  [env]
-  (->> (fn [ctx] (update ctx :request #(into env %)))
-       (hash-map :name ::env-interceptor :enter)
-       (interceptor/interceptor)))
-
-(defn add-env-interceptor
-  [env]
-  (->> (fn [interceptors]
-         (into [(env-interceptor env)]
-               interceptors))
-       (update env ::http/interceptors)))
 
 (defn install-schema!
   [{:keys [dbname] :as db} schemas]
@@ -383,14 +255,8 @@ inner join app_user_chat AS acu2 ON
   (swap! http-state (fn [st]
                       (when st
                         (http/stop st))
-                      (-> service
-                          (assoc :env :dev
-                                 ::http/join? false)
-                          (update ::http/routes (fn [routes]
-                                                  #(route/expand-routes routes)))
-                          http/default-interceptors
-                          add-env-interceptor
-                          http/dev-interceptors
+                      (-> (pedestal/service service
+                                            :env :dev)
                           http/create-server
                           http/start))))
 
@@ -405,10 +271,6 @@ inner join app_user_chat AS acu2 ON
   (swap! http-state (fn [st]
                       (when st
                         (http/stop st))
-                      (-> service
-                          (update :parser (fn [parser]
-                                            (constantly (parser))))
-                          http/default-interceptors
-                          add-env-interceptor
+                      (-> (pedestal/service service)
                           http/create-server
                           http/start))))
