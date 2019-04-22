@@ -78,9 +78,9 @@
 
 (def index
   {:name  ::index
-   :enter (fn [{{:keys [parser ui-index]} :request
-                :keys                     [request]
-                :as                       context}]
+   :enter (fn [{{::keys [parser ui-index]} :request
+                :keys                      [request]
+                :as                        context}]
             (let [parser (parser)
                   props (async/<!! (parser request (fp/get-query ui-index)))]
               (assoc context :response {:body   (fcip/render (ui-index props))
@@ -88,9 +88,10 @@
 
 (def api
   {:name  ::api
-   :enter (fn [{{:keys [edn-params transit-params parser]} :request
-                :keys                                      [request]
-                :as                                        context}]
+   :enter (fn [{{:keys  [edn-params transit-params]
+                 ::keys [parser]} :request
+                :keys             [request]
+                :as               context}]
             (let [query (or edn-params transit-params)
                   parser (parser)
                   result (parser request query)]
@@ -98,9 +99,15 @@
                 (assoc context :response {:body   (async/<! result)
                                           :status 200}))))})
 
+(def init-parser
+  {:name  ::init-parser
+   :enter (fn [{{::keys []} :request
+                :keys       [request]
+                :as         ctx}])})
+
 (def routes
-  `#{["/" :get [write-body index]]
-     ["/api" :post [write-body api]]})
+  `#{["/" :get [init-parser write-body index]]
+     ["/api" :post [init-parser write-body api]]})
 
 
 (defn context-configurator
@@ -133,6 +140,13 @@
                     "'unsafe-inline'"
                     "'unsafe-eval'"]))
 
+(defn init-parser
+  [{::keys [dev? parser-gen]
+    :as    ctx}]
+  (let [parser (if dev?
+                 #(parser-gen ctx)
+                 (constantly (parser-gen ctx)))]
+    (assoc ctx ::parser parser)))
 
 (defn service
   [ctx & {:as opts}]
@@ -141,13 +155,15 @@
         dev? (= env :dev)]
     (cond-> ctx
             :always (assoc ::http/enable-csrf {:body-params (body-params/default-parser-map :transit-options [{:handlers transit-read-handlers}])}
+                           ::dev? dev?
                            ::http/mime-types mime/default-mime-types
-                           ::http/resource-path "public"
-                           ::http/file-path "target/public"
-
                            ::http/container-options {:context-configurator context-configurator}
                            ::http/secure-headers {:content-security-policy-settings content-security-policy-settings}
                            ::http/routes routes)
+            dev? (assoc ::http/file-path "target/public"
+                        ::verbose-transit? true
+                        ::http/join? false)
+            :always init-parser
             :always http/default-interceptors
             :always add-env-interceptor
             dev? (update ::http/routes (fn [routes]
