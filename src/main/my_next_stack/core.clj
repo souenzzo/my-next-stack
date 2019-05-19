@@ -3,6 +3,8 @@
             [clojure.java.jdbc :as j]
             [io.pedestal.http.csrf :as csrf]
             [com.wsscode.pathom.core :as p]
+            [next.jdbc :as jdbc]
+            [next.jdbc.sql :as jsql]
             [souenzzo.pedestal :as pedestal]
             [com.wsscode.pathom.connect :as pc]
             [fulcro.client.dom-server :as dom]
@@ -13,21 +15,21 @@
 (pc/defresolver username-by-id [{::keys [db]} {:app.user/keys [id]}]
   {::pc/input  #{:app.user/id}
    ::pc/output [:app.user/username]}
-  {:app.user/username (-> (j/query db ["SELECT username FROM app_user WHERE id = ?"
-                                       id])
+  {:app.user/username (-> (jdbc/execute! db ["SELECT username FROM app_user WHERE id = ?"]
+                                         id)
                           first
                           :username)})
 
 (defn user-id-from-username
   [db username]
-  (-> (j/query db ["SELECT id FROM app_user WHERE username = ?"
-                   username])
+  (-> (jsql/query db ["SELECT id FROM app_user WHERE username = ?"
+                      username])
       first
-      :id))
+      :app_user/id))
 
 (defn user-id-from-csrf
   [db csrf]
-  (-> (j/query db ["
+  (-> (jsql/query db ["
 SELECT
   app_user.id
 FROM
@@ -41,10 +43,10 @@ INNER JOIN app_session ON
 
 (defn session-id-from-csrf
   [db csrf]
-  (-> (j/query db ["SELECT id FROM app_session WHERE csrf = ?"
-                   csrf])
+  (-> (jsql/query db ["SELECT id FROM app_session WHERE csrf = ?"
+                      csrf])
       first
-      :id))
+      :app_session/id))
 
 (pc/defmutation login [{::csrf/keys [anti-forgery-token]
                         ::keys      [db]} {tempid         :app.user/id
@@ -52,18 +54,18 @@ INNER JOIN app_session ON
   {::pc/sym    `app.user/login
    ::pc/output [:app.user/username]
    ::pc/params [:app.user/id]}
-  (let [id (j/with-db-transaction [db* db]
+  (let [id (jdbc/with-transaction [db* (jdbc/get-datasource db)]
              (let [id (or (user-id-from-username db* username)
                           (do
-                            (j/insert! db* :app_user {:username username})
+                            (jsql/insert! db* :app_user {:username username})
                             (user-id-from-username db* username)))
                    session-id (or (session-id-from-csrf db* anti-forgery-token)
                                   (do
-                                    (j/insert! db* :app_session {:csrf anti-forgery-token})
+                                    (jsql/insert! db* :app_session {:csrf anti-forgery-token})
                                     (session-id-from-csrf db* anti-forgery-token)))]
-               (j/update! db* :app_session
-                          {:authed id}
-                          ["id = ?" session-id])
+               (jsql/update! db* :app_session
+                             {:authed id}
+                             ["id = ?" session-id])
                id))]
     {:app.user/id id
      ::fp/tempids {tempid id}}))
@@ -82,7 +84,7 @@ INNER JOIN app_session ON
 
 (defn chat-id-by-2-users
   [db id1 id2]
-  (-> (j/query db ["
+  (-> (jdbc/execute! db ["
 select acu1.chat
 from app_user_chat as acu1
 inner join app_chat ON
@@ -140,7 +142,7 @@ inner join app_user_chat AS acu2 ON
 (pc/defresolver message-title [{::keys [db]} {:keys [app.chat/id]}]
   {::pc/input  #{:app.chat/id}
    ::pc/output [:app.chat/title]}
-  (let [{:keys [id title]} (-> (j/query db ["SELECT title, id FROM app_chat WHERE id = ?" id])
+  (let [{:keys [id title]} (-> (jdbc/execute! db ["SELECT title, id FROM app_chat WHERE id = ?" id])
                                first)]
     {:app.chat/title (or title (pr-str {:id id}))}))
 
@@ -148,7 +150,7 @@ inner join app_user_chat AS acu2 ON
 (pc/defresolver chat-messages [{::keys [db]} {:keys [app.chat/id]}]
   {::pc/input  #{:app.chat/id}
    ::pc/output [:app.chat/messages]}
-  (let [messages (j/query db ["SELECT * FROM app_message WHERE chat = ?" id])]
+  (let [messages (jdbc/execute! db ["SELECT * FROM app_message WHERE chat = ?" id])]
     {:app.chat/messages (for [{:keys [id]} messages]
                           {:app.message/id id})}))
 
@@ -159,7 +161,7 @@ inner join app_user_chat AS acu2 ON
                                     :app.user/me?]}]
    ::pc/input  #{:app.user/id}}
   (let [me (user-id-from-csrf db anti-forgery-token)
-        users (j/query db ["SELECT id FROM app_user"])]
+        users (jdbc/execute! db ["SELECT id FROM app_user"])]
     {:app.user/friends (for [{:keys [id]} users]
                          {:app.user/id  id
                           :app.user/me? (= me id)})}))
@@ -169,7 +171,7 @@ inner join app_user_chat AS acu2 ON
   {::pc/input  #{:app.message/id}
    ::pc/output [:app.message/body]}
   (->> ["SELECT body FROM app_message WHERE id = ?" id]
-       (j/query db)
+       (jdbc/execute! db)
        first
        :body
        (hash-map :app.message/body)))
@@ -213,6 +215,7 @@ inner join app_user_chat AS acu2 ON
 (def service
   {:env                       :prod
    ::db                       db
+   ::jdbc/conn                (jdbc/get-datasource db)
    ::http/port                8080
    ::pedestal/ui-index        ui-index
    ::pedestal/parser-gen      p/parallel-parser
@@ -236,14 +239,11 @@ inner join app_user_chat AS acu2 ON
 
 (defn install-schema!
   [{:keys [dbname] :as db} schemas]
-  (j/execute! (assoc db :dbname "")
-              (format "DROP DATABASE IF EXISTS %s;" dbname)
-              {:transaction? false})
-  (j/execute! (assoc db :dbname "")
-              (format "CREATE DATABASE %s;" dbname)
-              {:transaction? false})
-  (doseq [schema schemas]
-    (j/execute! db schema)))
+  (jdbc/execute! (assoc db :dbname "")
+                 [(format "DROP DATABASE IF EXISTS %s;" dbname)])
+  (jdbc/execute! (assoc db :dbname "")
+                 [(format "CREATE DATABASE %s;" dbname)])
+  (jdbc/execute! db schemas))
 
 (defonce http-state (atom nil))
 

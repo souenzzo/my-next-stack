@@ -99,6 +99,18 @@
                 (assoc context :response {:body   (async/<! result)
                                           :status 200}))))})
 
+
+(def client-state
+  {:name  ::client-state
+   :enter (fn [{{::keys [parser ui-index]} :request
+                :keys                      [request]
+                :as                        context}]
+            (let [parser (parser)
+                  props (async/<!! (parser request (fp/get-query ui-index)))]
+              (assoc context :response {:body   props
+                                        :status 200})))})
+
+
 (def init-parser
   {:name  ::init-parser
    :enter (fn [{{::keys []} :request
@@ -107,6 +119,7 @@
 
 (def routes
   `#{["/" :get [init-parser write-body index]]
+     ["/api" :get [init-parser write-body client-state]]
      ["/api" :post [init-parser write-body api]]})
 
 
