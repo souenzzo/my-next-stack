@@ -40,8 +40,8 @@
           (swap! state (fn [st]
                          (-> st
                              (assoc-in [:app.chat/id id] {:app.chat/id id})
-                             (assoc-in [::ui/chat ::ui/chat :ui/chat] [:app.chat/id id])
-                             (fr/set-route* ::ui/root-router [::ui/chat ::ui/chat])))))
+                             (assoc-in [:PAGE/chat :PAGE/chat :ui/chat] [:app.chat/id id])
+                             (fr/set-route* :PAGE/root-router [:PAGE/chat :PAGE/chat])))))
   (remote [{:keys [ast state]}]
           (-> ast
               (fm/returning state organism/Chat))))
@@ -51,7 +51,7 @@
   (action [{:keys [state]}]
           (swap! state (fn [st]
                          (-> st
-                             (fr/set-route* ::ui/root-router [::ui/login ::ui/login])))))
+                             (fr/set-route* :PAGE/root-router [:PAGE/login :PAGE/login])))))
   (remote [_] true))
 
 (defn render

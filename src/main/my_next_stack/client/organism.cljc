@@ -46,10 +46,10 @@
            :app.user/username]
    :ident [:app.user/id :app.user/id]}
   (dom/li
-    (dom/button {:disabled me?
+    (dom/button {:disabled (boolean me?)
                  :onClick  #(fp/transact! this `[(app.chat/chat-with ~{:app.chat/id (fp/tempid)
                                                                        :app.user/id id})])}
-                username)))
+                (str username))))
 
 (def ui-friend-li (fp/factory FriendLi {:keyfn :app.user/id}))
 

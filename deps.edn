@@ -6,7 +6,6 @@
            com.wsscode/pathom             {:mvn/version "2.2.14"}
            io.pedestal/pedestal.service   {:mvn/version "0.5.5"}
            io.pedestal/pedestal.jetty     {:mvn/version "0.5.5"}
-           org.clojure/java.jdbc          {:mvn/version "0.7.9"}
            org.postgresql/postgresql      {:mvn/version "42.2.5"}
            seancorfield/next.jdbc         {:mvn/version "1.0.0-alpha13"}
            org.clojure/spec-alpha2        {:git/url "https://github.com/clojure/spec-alpha2.git"

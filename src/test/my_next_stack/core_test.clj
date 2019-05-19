@@ -10,6 +10,9 @@
       (t/mutation app
                   `app.user/login {:app.user/id       "tempid"
                                    :app.user/username "abc"}
-                  [:app.user/id])
+                  [:app.user/id
+                   {:app.user/friends [:app.user/id
+                                       :app.user/me?
+                                       :app.user/username]}])
       => {:app.user/id                      3
           :fulcro.client.primitives/tempids {"tempid" 3}})))

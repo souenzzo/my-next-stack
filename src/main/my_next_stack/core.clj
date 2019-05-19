@@ -1,6 +1,5 @@
 (ns my-next-stack.core
   (:require [io.pedestal.http :as http]
-            [clojure.java.jdbc :as j]
             [io.pedestal.http.csrf :as csrf]
             [com.wsscode.pathom.core :as p]
             [next.jdbc :as jdbc]
@@ -15,10 +14,10 @@
 (pc/defresolver username-by-id [{::keys [db]} {:app.user/keys [id]}]
   {::pc/input  #{:app.user/id}
    ::pc/output [:app.user/username]}
-  {:app.user/username (-> (jdbc/execute! db ["SELECT username FROM app_user WHERE id = ?"]
-                                         id)
+  {:app.user/username (-> (jsql/query db ["SELECT username FROM app_user WHERE id = ?"
+                                          id])
                           first
-                          :username)})
+                          :app_user/username)})
 
 (defn user-id-from-username
   [db username]
@@ -39,7 +38,7 @@ INNER JOIN app_session ON
   AND app_session.csrf = ?)
 " csrf])
       first
-      :id))
+      :app_user/id))
 
 (defn session-id-from-csrf
   [db csrf]
@@ -73,18 +72,18 @@ INNER JOIN app_session ON
 (pc/defmutation exit [{::csrf/keys [anti-forgery-token]
                        ::keys      [db]} _]
   {::pc/sym `app.session/exit}
-  (let [id (j/with-db-transaction [db* db]
+  (let [id (jdbc/with-transaction [db* (jdbc/get-datasource db)]
              (let [id (session-id-from-csrf db* anti-forgery-token)]
                (when id
-                 (j/update! db* :app_session
-                            {:authed nil}
-                            ["id = ?" id]))
+                 (jsql/update! db* :app_session
+                               {:authed nil}
+                               ["id = ?" id]))
                id))]
     {}))
 
 (defn chat-id-by-2-users
   [db id1 id2]
-  (-> (jdbc/execute! db ["
+  (-> (jsql/query db ["
 select acu1.chat
 from app_user_chat as acu1
 inner join app_chat ON
@@ -97,7 +96,7 @@ inner join app_user_chat AS acu2 ON
   ( app_chat.id = acu2.chat )
 " id1 id2])
       first
-      :chat))
+      :app_user_chat/chat))
 
 (pc/defmutation chat-with [{::csrf/keys [anti-forgery-token]
                             ::keys      [db]} {tempid         :app.chat/id
@@ -105,12 +104,12 @@ inner join app_user_chat AS acu2 ON
   {::pc/sym    `app.chat/chat-with
    ::pc/input  [:app.user/id]
    ::pc/output [:app.chat/id]}
-  (let [id (j/with-db-transaction [db* db]
+  (let [id (jdbc/with-transaction [db* (jdbc/get-datasource db)]
              (let [my-id (user-id-from-csrf db* anti-forgery-token)]
                (or (chat-id-by-2-users db* id my-id)
-                   (let [chat-id (:id (first (j/insert! db* :app_chat {:title nil})))]
-                     (j/insert! db* :app_user_chat {:owner my-id :chat chat-id})
-                     (j/insert! db* :app_user_chat {:owner id :chat chat-id})
+                   (let [chat-id (:app_chat/id (jsql/insert! db* :app_chat {:title nil}))]
+                     (jsql/insert! db* :app_user_chat {:owner my-id :chat chat-id})
+                     (jsql/insert! db* :app_user_chat {:owner id :chat chat-id})
                      chat-id))))]
     {:app.chat/id id
      ::fp/tempids {tempid id}}))
@@ -122,9 +121,9 @@ inner join app_user_chat AS acu2 ON
    ::pc/input  #{}
    ::pc/output [:app.message/id]}
   (let [me (user-id-from-csrf db anti-forgery-token)
-        {:keys [id]} (first (j/insert! db :app_message {:author me
-                                                        :chat   id
-                                                        :body   body}))]
+        {:app_message/keys [id]} (jsql/insert! db :app_message {:author me
+                                                                :chat   id
+                                                                :body   body})]
     {:app.message/id id
      ::fp/tempids    {tempid id}}))
 
@@ -135,23 +134,23 @@ inner join app_user_chat AS acu2 ON
                 :app.chat/title]
    ::pc/output [:app.chat/id
                 :app.chat/title]}
-  (j/update! db :app_chat {:title title} ["id = ?" id])
+  (jsql/update! db :app_chat {:title title} ["id = ?" id])
   {:app.chat/id    id
    :app.chat/title title})
 
 (pc/defresolver message-title [{::keys [db]} {:keys [app.chat/id]}]
   {::pc/input  #{:app.chat/id}
    ::pc/output [:app.chat/title]}
-  (let [{:keys [id title]} (-> (jdbc/execute! db ["SELECT title, id FROM app_chat WHERE id = ?" id])
-                               first)]
+  (let [{:app_chat/keys [id title]} (-> (jsql/query db ["SELECT title, id FROM app_chat WHERE id = ?" id])
+                                        first)]
     {:app.chat/title (or title (pr-str {:id id}))}))
 
 
 (pc/defresolver chat-messages [{::keys [db]} {:keys [app.chat/id]}]
   {::pc/input  #{:app.chat/id}
    ::pc/output [:app.chat/messages]}
-  (let [messages (jdbc/execute! db ["SELECT * FROM app_message WHERE chat = ?" id])]
-    {:app.chat/messages (for [{:keys [id]} messages]
+  (let [messages (jsql/query db ["SELECT * FROM app_message WHERE chat = ?" id])]
+    {:app.chat/messages (for [{:app_message/keys [id]} messages]
                           {:app.message/id id})}))
 
 
@@ -161,8 +160,8 @@ inner join app_user_chat AS acu2 ON
                                     :app.user/me?]}]
    ::pc/input  #{:app.user/id}}
   (let [me (user-id-from-csrf db anti-forgery-token)
-        users (jdbc/execute! db ["SELECT id FROM app_user"])]
-    {:app.user/friends (for [{:keys [id]} users]
+        users (jsql/query db ["SELECT id FROM app_user"])]
+    {:app.user/friends (for [{:app_user/keys [id]} users]
                          {:app.user/id  id
                           :app.user/me? (= me id)})}))
 
@@ -171,9 +170,9 @@ inner join app_user_chat AS acu2 ON
   {::pc/input  #{:app.message/id}
    ::pc/output [:app.message/body]}
   (->> ["SELECT body FROM app_message WHERE id = ?" id]
-       (jdbc/execute! db)
+       (jsql/query db)
        first
-       :body
+       :app_message/body
        (hash-map :app.message/body)))
 
 (pc/defresolver index-data [{::csrf/keys [anti-forgery-token]} _]
