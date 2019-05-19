@@ -181,10 +181,12 @@ inner join app_user_chat AS acu2 ON
   {::csrf/anti-forgery-token anti-forgery-token
    ::script-src              "/_static/pwa/main.js"})
 
-(def ui-root (fp/factory ui/Root))
-
-(fp/defsc Index [this {::csrf/keys [anti-forgery-token]}]
-  {:query [::csrf/anti-forgery-token]}
+(fp/defsc Index [this {:app.ui/keys [root]
+                       ::csrf/keys  [anti-forgery-token]}]
+  {:query         [{:app.ui/root (fp/get-query ui/Root)}
+                   ::csrf/anti-forgery-token]
+   :initial-state (fn [_]
+                    {:app.ui/root (fp/get-initial-state ui/Root _)})}
   (dom/html
     {:lang "pt-BR"}
     (dom/head
@@ -199,9 +201,8 @@ inner join app_user_chat AS acu2 ON
     (dom/body
       {:data-anti-forgery-token anti-forgery-token}
       (dom/div {:id "app"}
-               (ui-root (fp/get-initial-state ui/Root {})))
-      (dom/script {:src "/_static/pwa/main.js"})
-      (dom/script {:dangerouslySetInnerHTML {:__html "my_next_stack.pwa.main()"}}))))
+               (ui/ui-root root))
+      (dom/script {:src "/_static/pwa/main.js"}))))
 
 (def ui-index (fp/factory Index))
 

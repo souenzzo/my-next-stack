@@ -22,3 +22,5 @@
    :initial-state (fn [_]
                     {:PAGE/root-router (fp/get-initial-state RootRouter _)})}
   (ui-root-router root-router))
+
+(def ui-root (fp/factory Root))
