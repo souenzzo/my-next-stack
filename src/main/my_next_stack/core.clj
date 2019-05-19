@@ -253,8 +253,8 @@ inner join app_user_chat AS acu2 ON
   (swap! http-state (fn [st]
                       (when st
                         (http/stop st))
-                      (-> (pedestal/service service
-                                            :env :dev)
+                      (-> (assoc service :env :dev)
+                          pedestal/init-service
                           http/create-server
                           http/start))))
 
@@ -269,6 +269,7 @@ inner join app_user_chat AS acu2 ON
   (swap! http-state (fn [st]
                       (when st
                         (http/stop st))
-                      (-> (pedestal/service service)
+                      (-> service
+                          pedestal/init-service
                           http/create-server
                           http/start))))

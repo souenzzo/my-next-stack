@@ -161,12 +161,11 @@
                  (constantly (parser-gen ctx)))]
     (assoc ctx ::parser parser)))
 
-(defn service
-  [ctx & {:as opts}]
-  (let [{:keys [env]
-         :as   ctx} (into ctx opts)
-        dev? (= env :dev)]
-    (cond-> ctx
+(defn init-service
+  [{:keys [env]
+    :as service-map}]
+  (let [dev? (= env :dev)]
+    (cond-> service-map
             :always (assoc ::http/enable-csrf {:body-params (body-params/default-parser-map :transit-options [{:handlers transit-read-handlers}])}
                            ::dev? dev?
                            ::http/mime-types mime/default-mime-types

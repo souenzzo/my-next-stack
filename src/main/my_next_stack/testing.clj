@@ -9,7 +9,7 @@
   [service-map]
   (let [app (-> service-map
                 (assoc :env :dev)
-                pedestal/service
+                pedestal/init-service
                 http/create-servlet)]
     (assoc app
       ::last-return (atom nil)
