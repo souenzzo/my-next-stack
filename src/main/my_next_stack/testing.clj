@@ -2,6 +2,7 @@
   (:require [souenzzo.pedestal :as pedestal]
             [clojure.string :as string]
             [clojure.edn :as edn]
+            [hickory.core :as hickory]
             [io.pedestal.test :refer [response-for]]
             [io.pedestal.http :as http]))
 
@@ -36,6 +37,10 @@
                  (= (get headers "Content-Type")
                     "application/edn") (assoc response
                                          :body (edn/read-string body))
+                 (string/starts-with? (get headers "Content-Type")
+                                      "text/html") (assoc response
+                                                     :body (-> (hickory/parse body)
+                                                               (hickory/as-hickory)))
                  :else response)]
     (reset! last-return return)))
 

@@ -81,6 +81,10 @@ INNER JOIN app_session ON
                id))]
     {}))
 
+(pc/defresolver root-router [this props]
+  {::pc/output [:PAGE/root-router]}
+  {:PAGE/root-router {}})
+
 (defn chat-id-by-2-users
   [db id1 id2]
   (-> (jsql/query db ["
@@ -180,12 +184,12 @@ inner join app_user_chat AS acu2 ON
   {::csrf/anti-forgery-token anti-forgery-token
    ::script-src              "/_static/pwa/main.js"})
 
-(fp/defsc Index [this {:app.ui/keys [root]
-                       ::csrf/keys  [anti-forgery-token]}]
-  {:query         [{:app.ui/root (fp/get-query ui/Root)}
+(fp/defsc Index [this {:>/keys     [root]
+                       ::csrf/keys [anti-forgery-token]}]
+  {:query         [{:>/root (fp/get-query ui/Root)}
                    ::csrf/anti-forgery-token]
    :initial-state (fn [_]
-                    {:app.ui/root (fp/get-initial-state ui/Root _)})}
+                    {:>/root (fp/get-initial-state ui/Root _)})}
   (dom/html
     {:lang "pt-BR"}
     (dom/head
@@ -229,6 +233,7 @@ inner join app_user_chat AS acu2 ON
                                                                   index-data message-body set-title
                                                                   message-title chat-messages
                                                                   chat-with send-msg
+                                                                  root-router
                                                                   username-by-id]})
                                p/error-handler-plugin]
    ::http/resource-path       "public"
