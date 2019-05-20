@@ -22,24 +22,9 @@
                                                                :target [:PAGE/home :PAGE/home]})])} "<")
     (organism/ui-chat chat)))
 
-
-(fm/defmutation app.user/login
-  [{:app.user/keys [username id]}]
-  (action [{:keys [state]}]
-          (swap! state (fn [st]
-                         (-> st
-                             (assoc-in [:app.user/id id] {:app.user/id       id
-                                                          :app.user/username username})
-                             (fr/set-route* :PAGE/root-router [:PAGE/home :PAGE/home])))))
-  (remote [{:keys [ast state]}]
-          true
-          (-> ast
-              (fm/returning state organism/FriendsList))))
-
-
-(fp/defsc Login [this {:ui/keys [username]
-                       :PAGE/keys   [page id]
-                       :or      {username ""}}]
+(fp/defsc Login [this {:ui/keys   [username]
+                       :PAGE/keys [page id]
+                       :or        {username ""}}]
   {:query         [:PAGE/id
                    :ui/username
                    :PAGE/page]
@@ -56,20 +41,34 @@
     (dom/input {:value    username
                 :onChange #(fm/set-value! this :ui/username (-> % .-target .-value))})))
 
-(fp/defsc Home [this {:PAGE/keys   [page id]
-                      :ui/keys [friends-list]}]
+(fp/defsc Home [this {:PAGE/keys [page id]
+                      :>/keys    [friends-list navbar]}]
   {:query         [:PAGE/id
                    :PAGE/page
-                   {:ui/friends-list (fp/get-query organism/FriendsList)}]
+                   {:>/navbar (fp/get-query organism/Navbar)}
+                   {:>/friends-list (fp/get-query organism/FriendsList)}]
    :ident         (fn [] [page id])
    :initial-state (fn [_]
-                    {:PAGE/page           :PAGE/home
-                     :PAGE/id             :PAGE/home
-                     :ui/friends-list (fp/get-initial-state organism/FriendsList _)})}
+                    {:PAGE/page      :PAGE/home
+                     :PAGE/id        :PAGE/home
+                     :>/navbar       (fp/get-initial-state organism/FriendsList _)
+                     :>/friends-list (fp/get-initial-state organism/FriendsList _)})}
   (fp/fragment
-    (dom/button {:onClick #(fp/transact! this `[(app.session/exit ~{})])}
-                "exit")
+    (organism/ui-navbar navbar)
     (organism/ui-friends-list friends-list)))
+
+(fm/defmutation app.user/login
+  [{:app.user/keys [username id]}]
+  (action [{:keys [state]}]
+          (swap! state (fn [st]
+                         (-> st
+                             (assoc-in [:app.user/id id] {:app.user/id       id
+                                                          :app.user/username username})
+                             (fr/set-route* :PAGE/root-router [:PAGE/home :PAGE/home])))))
+  (remote [{:keys [ast state]}]
+          (-> ast
+              (fm/returning state Home))))
+
 
 (fp/defsc Loading [this {:PAGE/keys [page id]}]
   {:query         [:PAGE/id

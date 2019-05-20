@@ -179,6 +179,21 @@ inner join app_user_chat AS acu2 ON
        :app_message/body
        (hash-map :app.message/body)))
 
+(pc/defresolver author-name [{::keys [db]} {:keys [app.message/id]}]
+  {::pc/input  #{:app.message/id}
+   ::pc/output [:app.message/author-name]}
+  (->> ["
+  SELECT app_user.username
+  FROM app_user
+  INNER JOIN app_message
+  ON app_message.author = app_user.id
+  WHERE app_message.id = ?
+  " id]
+       (jsql/query db)
+       first
+       :app_user/username
+       (hash-map :app.message/author-name)))
+
 (pc/defresolver index-data [{::csrf/keys [anti-forgery-token]} _]
   {::pc/output [::csrf/anti-forgery-token]}
   {::csrf/anti-forgery-token anti-forgery-token
@@ -231,7 +246,7 @@ inner join app_user_chat AS acu2 ON
    ::p/mutate                 pc/mutate-async
    ::p/plugins                [(pc/connect-plugin {::pc/register [login exit friends
                                                                   index-data message-body set-title
-                                                                  message-title chat-messages
+                                                                  message-title chat-messages author-name
                                                                   chat-with send-msg
                                                                   root-router
                                                                   username-by-id]})

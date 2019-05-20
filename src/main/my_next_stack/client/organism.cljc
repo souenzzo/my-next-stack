@@ -4,11 +4,12 @@
                :cljs [fulcro.client.dom :as dom])
             [fulcro.client.mutations :as fm]))
 
-(fp/defsc Message [this {:app.message/keys [id body]}]
+(fp/defsc Message [this {:app.message/keys [id body author-name]}]
   {:query [:app.message/id
+           :app.message/author-name
            :app.message/body]
    :ident [:app.message/id :app.message/id]}
-  (dom/li (pr-str body)))
+  (dom/li (pr-str [author-name body])))
 
 
 (def ui-messages (fp/factory Message {:keyfn :app.message/id}))
@@ -24,10 +25,13 @@
    :ident [:app.chat/id :app.chat/id]}
   (fp/fragment
     (if new-title
-      (dom/form
-        {:onSubmit (fn [e] (.preventDefault e)
-                     (fp/transact! this `[(app.chat/new-title ~{:app.chat/id id :app.chat/title new-title})]))}
-        (dom/input {:value new-title :onChange #(fm/set-value! this :ui/new-title (-> % .-target .-value))}))
+      (let [on-submit (fn [e] (.preventDefault e)
+                        (fp/transact! this `[(app.chat/new-title ~{:app.chat/id id :app.chat/title new-title})]))]
+        (dom/form
+          {:onSubmit on-submit}
+          (dom/input {:value    new-title
+                      :onBlur   on-submit
+                      :onChange #(fm/set-value! this :ui/new-title (-> % .-target .-value))})))
       (dom/p {:onClick #(fm/set-value! this :ui/new-title title)} title))
     (map ui-messages messages)
     (dom/form
@@ -52,6 +56,18 @@
                 (str username))))
 
 (def ui-friend-li (fp/factory FriendLi {:keyfn :app.user/id}))
+
+(fp/defsc Navbar [this {:keys [app.user/username]}]
+  {:query         [:app.user/username]
+   :ident         (fn [] [::navbar ::navbar])
+   :initial-state (fn [_] {})}
+  (fp/fragment
+    (dom/code username)
+    (dom/button {:onClick #(fp/transact! this `[(app.session/exit ~{})])}
+                "exit")))
+
+(def ui-navbar (fp/factory Navbar))
+
 
 (fp/defsc FriendsList [this {:keys [app.user/friends]}]
   {:query         [{:app.user/friends (fp/get-query FriendLi)}]
