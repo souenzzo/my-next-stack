@@ -1,0 +1,5 @@
+{:paths   ["src" "resources"]
+ :deps    {org.clojure/clojure {:mvn/version "1.11.1"}}
+ :aliases {:dev {:extra-paths ["dev" "test"]
+                 :extra-deps  {thheller/shadow-cljs    {:mvn/version "2.20.13"}
+                               org.clojure/tools.build {:mvn/version "0.8.4"}}}}}

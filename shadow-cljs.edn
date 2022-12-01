@@ -1,0 +1,6 @@
+{:deps   {:aliases [:dev]}
+ :builds {:client {:target     :browser
+                   :output-dir "target/classes/public/client"
+                   :asset-path "/client"
+                   :modules    {:main {:init-fn mns.client/start}}
+                   :devtools   {:after-load mns.client/after-load}}}}
