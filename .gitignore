@@ -1,4 +1,5 @@
 .idea/
+_site/
 *.iml
 .cpcache
 .shadow-cljs
@@ -6,3 +7,4 @@ node_modules
 .nrepl-port
 yarn-error.log
 target/
+

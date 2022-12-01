@@ -1,17 +1,36 @@
 (ns mns.build
-  (:require [clojure.tools.build.api :as b]
-            [shadow.cljs.devtools.api :as shadow.api]
-            [shadow.cljs.devtools.server :as shadow.server]))
+  (:require
+    [clojure.java.io :as io]
+    [clojure.tools.build.api :as b]
+    [clojure.tools.cli :as cli]
+    [shadow.cljs.devtools.api :as shadow.api]
+    [shadow.cljs.devtools.server :as shadow.server]))
 
 (def class-dir "target/classes")
-(def uber-file "target/mns.jar")
+
+(defn release
+  [& {:keys [destination]
+      :or   {destination "_site"}}]
+  (b/delete {:path class-dir})
+  (b/copy-dir {:src-dirs   ["resources"]
+               :target-dir class-dir})
+  (shadow.api/release :client)
+  (b/copy-dir {:src-dirs   [(str (io/file class-dir "public"))]
+               :target-dir destination}))
 
 (defn -main
-  [& _]
-  (let [basis (b/create-basis {:project "deps.edn"})]
-    (b/delete {:path "target"})
+  [& args]
+  (let [{:keys [options errors]} (cli/parse-opts args
+                                   [["-d" "--destination DIR"
+                                     :default "_site"]])]
+    (binding [*out* *err*]
+      (run! println errors))
     (shadow.server/start!)
-    (shadow.api/release :client)
+    (release options)
     (shadow.server/stop!)
-    #_(b/copy-dir {:src-dirs   (:paths basis)
-                   :target-dir class-dir})))
+    (System/exit 0)))
+
+(comment
+  (shadow.server/start!)
+  (release {:destination "_site"})
+  (shadow.server/stop!))
