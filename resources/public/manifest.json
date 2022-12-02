@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "My next stack",
+  "short_name": "mns",
+  "start_url": ".",
+  "background_color": "#FFFFF",
+  "description": "Hello world",
+  "icons": [],
+  "related_applications": []
+}
