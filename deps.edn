@@ -1,5 +1,9 @@
 {:paths   ["src" "resources"]
- :deps    {org.clojure/clojure {:mvn/version "1.11.1"}}
+ :deps    {org.clojure/clojure          {:mvn/version "1.11.1"}
+           io.pedestal/pedestal.service {:mvn/version "0.5.11-beta-1"}
+           io.pedestal/pedestal.jetty   {:mvn/version "0.5.11-beta-1"}
+           org.slf4j/slf4j-simple       {:mvn/version "2.0.5"}}
+
  :aliases {:dev {:extra-paths ["dev" "test"]
                  :extra-deps  {thheller/shadow-cljs    {:mvn/version "2.20.13"}
                                com.google.guava/guava  {:mvn/version "31.0.1-jre"}
